@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Ordinals Gallery</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔶 Bitcoin Ordinals Gallery</h1>
+            <p class="subtitle">View inscriptions held by any Bitcoin wallet</p>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="addressInput" 
+                    placeholder="Enter Bitcoin address (bc1p...)" 
+                    autocomplete="off"
+                >
+                <button id="searchBtn" onclick="loadInscriptions()">
+                    <span class="btn-text">Search</span>
+                    <span class="btn-loading" style="display: none;">Loading...</span>
+                </button>
+            </div>
+            <p class="hint">Supports taproot (bc1p), segwit (bc1q), and legacy addresses</p>
+        </section>
+
+        <!-- Stats Section -->
+        <section id="statsSection" class="stats-section" style="display: none;">
+            <div class="stat-card">
+                <span class="stat-value" id="totalCount">0</span>
+                <span class="stat-label">Total Inscriptions</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="imageCount">0</span>
+                <span class="stat-label">Images</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="textCount">0</span>
+                <span class="stat-label">Text/JSON</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="otherCount">0</span>
+                <span class="stat-label">Other</span>
+            </div>
+        </section>
+
+        <!-- Filter Section -->
+        <section id="filterSection" class="filter-section" style="display: none;">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="image">Images</button>
+            <button class="filter-btn" data-filter="text">Text/JSON</button>
+            <button class="filter-btn" data-filter="html">HTML</button>
+            <button class="filter-btn" data-filter="other">Other</button>
+        </section>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Fetching inscriptions...</p>
+        </div>
+
+        <!-- Gallery Grid -->
+        <section id="gallery" class="gallery"></section>
+
+        <!-- Load More Button -->
+        <div id="loadMoreSection" class="load-more-section" style="display: none;">
+            <button id="loadMoreBtn" onclick="loadMore()">Load More</button>
+            <p class="pagination-info">
+                Showing <span id="showingCount">0</span> of <span id="totalInscriptions">0</span>
+            </p>
+        </div>
+
+        <!-- Modal for viewing inscription details -->
+        <div id="modal" class="modal" onclick="closeModal(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <div id="modalBody"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by <a href="https://hiro.so" target="_blank">Hiro Ordinals API</a></p>
+            <p>View inscriptions on <a href="https://ordinals.com" target="_blank">ordinals.com</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
