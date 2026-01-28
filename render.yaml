@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: bis-proxy
+    env: node
+    rootDir: ordinals-gallery
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: BIS_API_KEY
+        sync: false

@@ -1,0 +1,13 @@
+{
+  "name": "bis-proxy",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "bis-proxy.example.js",
+  "scripts": {
+    "start": "node bis-proxy.example.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2"
+  }
+}
