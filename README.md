@@ -6,7 +6,8 @@ A clean, responsive web application to view Bitcoin ordinals inscriptions held b
 
 ## Features
 
-- 🔍 **Address Search** - Enter any Bitcoin address to view its inscriptions
+- 🔐 **Wallet Connect (LaserEyes)** - Connect and verify your own Bitcoin wallet (no manual address entry)
+- 🔍 **Address Search** - (Optional, dev-only) legacy address search still supported when enabled
 - 🖼️ **Visual Gallery** - Grid layout with thumbnails for images
 - 📄 **Content Preview** - Text/JSON inscriptions displayed inline
 - 🏷️ **Content Filtering** - Filter by type: Images, Text/JSON, HTML, Other
@@ -17,24 +18,31 @@ A clean, responsive web application to view Bitcoin ordinals inscriptions held b
 
 ## How It Works (current setup)
 
-### Frontend (GitHub Pages)
+### Auth / Wallet Flow (LaserEyes)
 
-Right now the **browser app** uses the [Hiro Ordinals API](https://docs.hiro.so/ordinals) because it is CORS-friendly for static sites:
+The gallery now uses the LaserEyes wallet connector (see `static/js/lasereyes-bundle.js` and `static/js/wallet.js`) instead of asking users to paste addresses:
 
-1. User enters a Bitcoin wallet address (taproot, segwit, or legacy)
-2. App queries Hiro: `GET /ordinals/v1/inscriptions?address={address}&offset={offset}&limit=60`
-3. It discovers the `total` from the first page, then walks pages until it has everything Hiro reports
-4. Results are displayed in a responsive grid with filters and a detail modal
+1. User clicks **Connect Wallet** in the gallery UI.
+2. LaserEyes shows a wallet picker (UniSat, Xverse, Leather, OYL, Phantom, Magic Eden, OKX, Wizz).
+3. The selected wallet connects and returns the active Bitcoin address.
+4. The user is prompted to **sign a verification message**. We store the address + signature in `localStorage`.
+5. After a successful signature, the app automatically loads inscriptions for the verified address.
 
-### Backend (planned)
+The wallet state is also restored from `localStorage` on page load, so a previously verified session will reconnect automatically and reload the gallery.
 
-Hiro under‑indexes some wallets (e.g. Craig’s), so we also use [Best in Slot](https://docs.bestinslot.xyz/) **server‑side only** via a small proxy (see `bis-proxy.example.js`). The plan is:
+### Data Source (Best in Slot via proxy)
 
-- Frontend → our proxy → Best in Slot API
+The gallery reads inscriptions via our Best in Slot (BIS) proxy (see `bis-proxy.example.js`):
+
+- Frontend → **BIS proxy** → Best in Slot API
 - Proxy adds proper CORS headers and keeps the Best in Slot API key secret
 - Frontend never calls `api.bestinslot.xyz` directly (avoids CORS failures)
 
-Until that proxy is live, the public site stays on Hiro for stability.
+The main endpoint in use is:
+
+- `GET /wallet/inscriptions?address={addr}&sort_by=inscr_num&order=desc&offset=0&count=2000&exclude_brc20=false`
+
+Only the **verified wallet address** from LaserEyes is used when calling this proxy in the production flow.
 
 ## Supported Address Types
 
@@ -45,12 +53,17 @@ Until that proxy is live, the public site stays on Hiro for stability.
 
 ## Usage
 
-### Quick Start
+### Quick Start (Wallet Connect)
 
-1. Open `index.html` in any modern browser
-2. Enter a Bitcoin address in the search box
-3. Press Enter or click "Search"
-4. Browse the inscription gallery
+1. Open `index.html` in any modern browser.
+2. Click **Connect Wallet**.
+3. Pick your preferred Bitcoin wallet in the LaserEyes modal.
+4. Approve the connection and sign the verification message.
+5. The gallery will automatically load all inscriptions for your verified address.
+
+### Optional: Legacy Address Search (dev/testing only)
+
+The code still contains a legacy "manual address" path for local testing and debugging. In the production UI this is hidden; inscriptions are fetched **only** for the connected + signed wallet address.
 
 ### URL Parameters
 
@@ -76,20 +89,9 @@ ordinals-gallery/
 
 ## API Reference
 
-### Browser (Hiro)
-
-The live GitHub Pages app talks directly to the Hiro Ordinals API:
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /ordinals/v1/inscriptions?address={addr}&offset={offset}&limit=60` | Fetch inscriptions by owner (paged) |
-| `GET /ordinals/v1/inscriptions/{id}/content` | Get inscription content |
-
-> Note: For some wallets, Hiro currently reports fewer inscriptions than Best in Slot.
-
 ### Backend / Proxy (Best in Slot)
 
-Planned / server-side only (see `bis-proxy.example.js`):
+The gallery talks to Best in Slot **only** through a small backend proxy (see `bis-proxy.example.js`):
 
 | Endpoint (upstream) | Purpose |
 |---------------------|---------|

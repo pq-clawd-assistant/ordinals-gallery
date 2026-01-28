@@ -14,21 +14,30 @@
             <p class="subtitle">View inscriptions held by any Bitcoin wallet</p>
         </header>
 
-        <!-- Search Section -->
-        <section class="search-section">
-            <div class="search-box">
-                <input 
-                    type="text" 
-                    id="addressInput" 
-                    placeholder="Enter Bitcoin address (bc1p...)" 
-                    autocomplete="off"
-                >
-                <button id="searchBtn" onclick="loadInscriptions()">
-                    <span class="btn-text">Search</span>
-                    <span class="btn-loading" style="display: none;">Loading...</span>
-                </button>
+        <!-- Wallet Connect Section (LaserEyes) -->
+        <section class="wallet-connect-section">
+            <!-- Connected state: top right bar -->
+            <div id="connected-bar" class="wallet-connected-bar" style="display: none;">
+                <code id="wallet-address">-</code>
+                <button id="disconnect-btn" class="btn btn-small">Disconnect</button>
             </div>
-            <p class="hint">Supports taproot (bc1p), segwit (bc1q), and legacy addresses</p>
+
+            <div class="wallet-connect-card">
+                <!-- Not Connected State -->
+                <div id="not-connected">
+                    <h2 class="wallet-connect-title">Connect your Bitcoin wallet</h2>
+                    <p class="wallet-connect-description">
+                        Use LaserEyes to connect and verify your wallet. Once connected, we'll load all
+                        inscriptions held by your verified address via our Best in Slot proxy.
+                    </p>
+                    <button id="connect-btn" class="btn btn-primary">
+                        Connect Wallet
+                    </button>
+                </div>
+
+                <!-- Connected State (placeholder, content driven by gallery below) -->
+                <div id="connected" style="display: none;"></div>
+            </div>
         </section>
 
         <!-- Stats Section -->
@@ -88,6 +97,23 @@
             </div>
         </div>
 
+        <!-- Wallet Selection Modal (LaserEyes) -->
+        <div id="wallet-modal" class="modal" style="display: none;">
+            <div class="modal-backdrop"></div>
+            <div class="wallet-modal-content">
+                <div class="wallet-modal-header">
+                    <h2>Select Wallet</h2>
+                    <button class="wallet-modal-close" id="modal-close">&times;</button>
+                </div>
+                <div class="wallet-modal-body">
+                    <div class="wallet-list" id="wallet-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container for wallet status -->
+        <div id="toast-container" class="toast-container"></div>
+
         <!-- Footer -->
         <footer class="footer">
             <p>Powered by <a href="https://bestinslot.xyz" target="_blank">Best in Slot</a></p>
@@ -95,6 +121,11 @@
         </footer>
     </div>
 
+    <!-- LaserEyes Wallet Connect -->
+    <script src="static/js/lasereyes-bundle.js"></script>
+    <script src="static/js/wallet.js"></script>
+
+    <!-- Ordinals Gallery App -->
     <script src="app.js"></script>
 </body>
 </html>

@@ -167,13 +167,21 @@ async function fetchInscriptionContent(inscriptionId) {
  */
 function setLoading(loading) {
     state.loading = loading;
-    elements.loadingIndicator().style.display = loading ? 'block' : 'none';
-    elements.searchBtn().disabled = loading;
-    
-    const btnText = elements.searchBtn().querySelector('.btn-text');
-    const btnLoading = elements.searchBtn().querySelector('.btn-loading');
-    btnText.style.display = loading ? 'none' : 'inline';
-    btnLoading.style.display = loading ? 'inline' : 'none';
+    const loadingEl = elements.loadingIndicator();
+    if (loadingEl) {
+        loadingEl.style.display = loading ? 'block' : 'none';
+    }
+
+    const btn = elements.searchBtn ? elements.searchBtn() : null;
+    if (btn) {
+        btn.disabled = loading;
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoading = btn.querySelector('.btn-loading');
+        if (btnText && btnLoading) {
+            btnText.style.display = loading ? 'none' : 'inline';
+            btnLoading.style.display = loading ? 'inline' : 'none';
+        }
+    }
 }
 
 /**
@@ -497,20 +505,30 @@ function escapeHtml(text) {
 // ========================================
 
 /**
- * Load inscriptions for the entered address
- * Now fetches ALL pages from Hiro and shows everything in one go
+ * Load inscriptions for the active wallet address
+ * (Wallet must be connected and verified via LaserEyes)
  */
 async function loadInscriptions() {
-    const address = elements.addressInput().value.trim();
-    
+    let address = null;
+
+    // Prefer verified LaserEyes session
+    if (window.WalletConnect && window.WalletConnect.isConnected()) {
+        address = window.WalletConnect.getAddress();
+    } else {
+        const inputEl = elements.addressInput ? elements.addressInput() : null;
+        if (inputEl) {
+            address = inputEl.value.trim();
+        }
+    }
+
     if (!address) {
-        showError('Please enter a Bitcoin address');
+        showError('Connect your wallet to view inscriptions');
         return;
     }
     
-    // Basic address validation
+    // Basic address validation (defensive check even for wallet-provided address)
     if (!isValidBitcoinAddress(address)) {
-        showError('Invalid Bitcoin address format. Supported: bc1p... (taproot), bc1q... (segwit), 1... or 3... (legacy)');
+        showError('Invalid Bitcoin address format returned by wallet.');
         return;
     }
     
@@ -595,10 +613,13 @@ function isValidBitcoinAddress(address) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Search on Enter key
-    elements.addressInput().addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') loadInscriptions();
-    });
+    // (Optional) legacy manual address input support if present in DOM
+    const addressInputEl = elements.addressInput ? elements.addressInput() : null;
+    if (addressInputEl) {
+        addressInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loadInscriptions();
+        });
+    }
     
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -615,11 +636,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') closeModal();
     });
     
-    // Check for address in URL params
+    // Auto-load when wallet is verified
+    window.addEventListener('wallet:verified', () => {
+        hideError();
+        loadInscriptions();
+    });
+
+    // (Optional) legacy URL param support if an address input exists
     const urlParams = new URLSearchParams(window.location.search);
     const addressParam = urlParams.get('address');
-    if (addressParam) {
-        elements.addressInput().value = addressParam;
+    if (addressParam && addressInputEl) {
+        addressInputEl.value = addressParam;
         loadInscriptions();
     }
 });
