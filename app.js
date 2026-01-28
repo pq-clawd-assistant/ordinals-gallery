@@ -651,7 +651,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Make functions globally accessible for onclick handlers
+// Make functions globally accessible for onclick handlers and wallet hook
 window.loadInscriptions = loadInscriptions;
 window.loadMore = loadMore;
 window.closeModal = closeModal;
+
+// Direct hook used by wallet.js when verification succeeds
+window.OrdinalsGallery = {
+    loadForAddress(address) {
+        console.log('OrdinalsGallery.loadForAddress called with:', address);
+        if (address) {
+            state.address = address;
+        }
+        loadInscriptions();
+    }
+};

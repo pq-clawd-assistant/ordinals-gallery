@@ -370,6 +370,15 @@ function onVerified(address, provider) {
     } catch (e) {
         console.warn('wallet:verified event failed:', e);
     }
+
+    // Direct hook for ordinals gallery (fallback if events are missed)
+    try {
+        if (window.OrdinalsGallery && typeof window.OrdinalsGallery.loadForAddress === 'function') {
+            window.OrdinalsGallery.loadForAddress(address);
+        }
+    } catch (e) {
+        console.warn('OrdinalsGallery hook failed:', e);
+    }
 }
 
 function onDisconnected() {
