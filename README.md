@@ -15,15 +15,26 @@ A clean, responsive web application to view Bitcoin ordinals inscriptions held b
 - 📱 **Responsive** - Works on desktop and mobile
 - ⚡ **Client-Side** - No backend required, runs entirely in browser
 
-## How It Works
+## How It Works (current setup)
 
-The gallery uses the [Hiro Ordinals API](https://docs.hiro.so/ordinals) to fetch inscription data:
+### Frontend (GitHub Pages)
+
+Right now the **browser app** uses the [Hiro Ordinals API](https://docs.hiro.so/ordinals) because it is CORS-friendly for static sites:
 
 1. User enters a Bitcoin wallet address (taproot, segwit, or legacy)
-2. App queries the API: `GET /ordinals/v1/inscriptions?address={address}`
-3. Results are displayed in a responsive grid
-4. Click any inscription to view details and content
-5. Pagination loads more results as needed
+2. App queries Hiro: `GET /ordinals/v1/inscriptions?address={address}&offset={offset}&limit=60`
+3. It discovers the `total` from the first page, then walks pages until it has everything Hiro reports
+4. Results are displayed in a responsive grid with filters and a detail modal
+
+### Backend (planned)
+
+Hiro under‑indexes some wallets (e.g. Craig’s), so we also use [Best in Slot](https://docs.bestinslot.xyz/) **server‑side only** via a small proxy (see `bis-proxy.example.js`). The plan is:
+
+- Frontend → our proxy → Best in Slot API
+- Proxy adds proper CORS headers and keeps the Best in Slot API key secret
+- Frontend never calls `api.bestinslot.xyz` directly (avoids CORS failures)
+
+Until that proxy is live, the public site stays on Hiro for stability.
 
 ## Supported Address Types
 
@@ -65,14 +76,30 @@ ordinals-gallery/
 
 ## API Reference
 
-This app uses the Hiro Ordinals API:
+### Browser (Hiro)
+
+The live GitHub Pages app talks directly to the Hiro Ordinals API:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /ordinals/v1/inscriptions?address={addr}` | Fetch inscriptions by owner |
+| `GET /ordinals/v1/inscriptions?address={addr}&offset={offset}&limit=60` | Fetch inscriptions by owner (paged) |
 | `GET /ordinals/v1/inscriptions/{id}/content` | Get inscription content |
 
-**Rate Limits:** 20 requests/second, 50 requests/minute (without API key)
+> Note: For some wallets, Hiro currently reports fewer inscriptions than Best in Slot.
+
+### Backend / Proxy (Best in Slot)
+
+Planned / server-side only (see `bis-proxy.example.js`):
+
+| Endpoint (upstream) | Purpose |
+|---------------------|---------|
+| `GET https://api.bestinslot.xyz/v3/wallet/inscriptions?...` | Rich inscription data by wallet address |
+
+The proxy exposes a browser-safe endpoint, for example:
+
+| Proxy Endpoint | Purpose |
+|----------------|---------|
+| `GET /wallet/inscriptions?address={addr}` | For the frontend to call (adds CORS + hides API key) |
 
 ## Customization
 
