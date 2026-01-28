@@ -529,6 +529,8 @@ async function loadInscriptions() {
     // For now, trust the wallet-provided address and let the backend/proxy enforce validity.
     // This avoids blocking on wallets that return non-standard-but-usable formats.
     
+    console.log('loadInscriptions called with address:', address);
+
     // Reset state
     state.address = address;
     state.inscriptions = [];
@@ -634,7 +636,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Auto-load when wallet is verified
-    window.addEventListener('wallet:verified', () => {
+    window.addEventListener('wallet:verified', (ev) => {
+        console.log('wallet:verified event detail:', ev.detail);
         hideError();
         loadInscriptions();
     });
