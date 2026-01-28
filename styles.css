@@ -232,6 +232,52 @@ body {
     gap: 1.5rem;
 }
 
+/* Gallery actions (selection + shared state) */
+.gallery-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 1000px;
+    margin: 0 auto 1.5rem auto;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.gallery-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.gallery-actions-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+}
+
+.selection-info {
+    color: var(--text-secondary);
+}
+
+.shared-gallery-label {
+    color: var(--text-muted);
+}
+
+.shared-gallery-name {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.shared-gallery-address {
+    font-size: 0.8rem;
+}
+
 /* Inscription Card */
 .inscription-card {
     background: var(--bg-card);
@@ -296,6 +342,34 @@ body {
     border-radius: var(--radius-sm);
     font-size: 0.7rem;
     color: var(--text-secondary);
+}
+
+.selection-toggle {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 0.15rem 0.45rem;
+    cursor: pointer;
+}
+
+.selection-toggle:hover {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.selection-checkbox {
+    display: inline-block;
+    width: 0.9rem;
+    text-align: center;
+}
+
+.inscription-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(247, 147, 26, 0.4);
 }
 
 .inscription-info {

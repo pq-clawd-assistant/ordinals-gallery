@@ -1,9 +1,9 @@
 /**
  * Bitcoin Ordinals Gallery
- * 
+ *
  * A client-side web application to view Bitcoin ordinals inscriptions
  * held by any Bitcoin wallet address.
- * 
+ *
  * Uses the Hiro Ordinals API in the browser (Best in Slot planned via a backend proxy): https://docs.hiro.so/ordinals
  */
 
@@ -17,22 +17,22 @@ const CONFIG = {
 
     // Fallback Hiro Ordinals API base URL (not used by default in browser now)
     API_BASE: 'https://api.hiro.so/ordinals/v1',
-    
+
     // Number of inscriptions to request from proxy/BIS
     PAGE_SIZE: 2000,
-    
+
     // Content URL for viewing inscription content (fallback)
     CONTENT_URL: (id) => `https://ordinals.com/content/${id}`,
-    
+
     // External links
     ORDINALS_COM: (id) => `https://ordinals.com/inscription/${id}`,
-    
+
     // Supported image MIME types (display inline)
     IMAGE_TYPES: ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif'],
-    
+
     // Text/JSON types (display as text)
     TEXT_TYPES: ['text/plain', 'application/json', 'text/json'],
-    
+
     // HTML types (display in iframe)
     HTML_TYPES: ['text/html', 'application/xhtml+xml']
 };
@@ -48,7 +48,11 @@ const state = {
     offset: 0,
     loading: false,
     currentFilter: 'all',
-    contentCache: new Map()
+    contentCache: new Map(),
+    selectedIds: new Set(),
+    currentGalleryId: null,
+    viewingSharedGallery: false,
+    sharedGalleryMeta: null
 };
 
 // ========================================
@@ -72,7 +76,13 @@ const galleryElements = {
     textCount: () => document.getElementById('textCount'),
     otherCount: () => document.getElementById('otherCount'),
     showingCount: () => document.getElementById('showingCount'),
-    totalInscriptions: () => document.getElementById('totalInscriptions')
+    totalInscriptions: () => document.getElementById('totalInscriptions'),
+    // Gallery sharing elements
+    galleryActions: () => document.getElementById('galleryActions'),
+    saveGalleryBtn: () => document.getElementById('saveGalleryBtn'),
+    selectionInfo: () => document.getElementById('selectionInfo'),
+    sharedGalleryName: () => document.getElementById('sharedGalleryName'),
+    sharedGalleryAddress: () => document.getElementById('sharedGalleryAddress')
 };
 
 // ========================================
@@ -138,23 +148,23 @@ async function fetchInscriptionContent(inscriptionId) {
     if (state.contentCache.has(inscriptionId)) {
         return state.contentCache.get(inscriptionId);
     }
-    
+
     const url = CONFIG.CONTENT_URL(inscriptionId);
     const response = await fetch(url);
-    
+
     if (!response.ok) {
         throw new Error('Failed to fetch content');
     }
-    
+
     const text = await response.text();
-    
+
     // Cache the result (limit cache size)
     if (state.contentCache.size > 100) {
         const firstKey = state.contentCache.keys().next().value;
         state.contentCache.delete(firstKey);
     }
     state.contentCache.set(inscriptionId, text);
-    
+
     return text;
 }
 
@@ -205,23 +215,23 @@ function hideError() {
  */
 function updateStats() {
     const inscriptions = state.inscriptions;
-    
+
     let imageCount = 0;
     let textCount = 0;
     let otherCount = 0;
-    
+
     inscriptions.forEach(insc => {
         const type = getContentCategory(insc.mime_type);
         if (type === 'image') imageCount++;
         else if (type === 'text') textCount++;
         else otherCount++;
     });
-    
+
     galleryElements.totalCount().textContent = state.total.toLocaleString();
     galleryElements.imageCount().textContent = imageCount.toLocaleString();
     galleryElements.textCount().textContent = textCount.toLocaleString();
     galleryElements.otherCount().textContent = otherCount.toLocaleString();
-    
+
     galleryElements.showingCount().textContent = inscriptions.length.toLocaleString();
     galleryElements.totalInscriptions().textContent = state.total.toLocaleString();
 }
@@ -292,13 +302,25 @@ function createInscriptionCard(inscription) {
     card.className = 'inscription-card';
     card.dataset.id = inscription.id;
     card.dataset.category = getContentCategory(inscription.mime_type);
-    
+
     const category = getContentCategory(inscription.mime_type);
-    
+    const isSelected = state.selectedIds.has(inscription.id);
+
+    if (isSelected) {
+        card.classList.add('selected');
+    }
+
+    const selectionToggleHtml = state.viewingSharedGallery ? '' : `
+        <button class="selection-toggle" type="button" title="Select inscription">
+            <span class="selection-checkbox">${isSelected ? '✓' : ''}</span>
+        </button>
+    `;
+
     card.innerHTML = `
         <div class="inscription-preview">
             ${renderPreview(inscription, category)}
             <span class="mime-badge">${inscription.mime_type || 'unknown'}</span>
+            ${selectionToggleHtml}
         </div>
         <div class="inscription-info">
             <div class="inscription-number">#${inscription.number?.toLocaleString() || 'N/A'}</div>
@@ -309,14 +331,30 @@ function createInscriptionCard(inscription) {
             </div>
         </div>
     `;
-    
-    card.addEventListener('click', () => openModal(inscription));
-    
+
+    // Card click opens modal (but not when clicking the selection toggle)
+    card.addEventListener('click', (event) => {
+        if (event.target.closest && event.target.closest('.selection-toggle')) {
+            return;
+        }
+        openModal(inscription);
+    });
+
+    if (!state.viewingSharedGallery) {
+        const toggleBtn = card.querySelector('.selection-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleInscriptionSelection(inscription.id);
+            });
+        }
+    }
+
     // Load text preview if applicable
     if (category === 'text') {
         loadTextPreview(card, inscription.id);
     }
-    
+
     return card;
 }
 
@@ -325,18 +363,18 @@ function createInscriptionCard(inscription) {
  */
 function renderPreview(inscription, category) {
     const contentUrl = inscription.render_url || inscription.content_url || CONFIG.CONTENT_URL(inscription.id);
-    
+
     switch (category) {
         case 'image':
             return `<img src="${contentUrl}" alt="Inscription #${inscription.number}" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'type-icon\\'>🖼️</span><span class=\\'mime-badge\\'>${inscription.mime_type}</span>'">`;
-        
+
         case 'html':
             // Use sandbox for security
             return `<iframe src="${contentUrl}" sandbox="allow-scripts" loading="lazy"></iframe>`;
-        
+
         case 'text':
             return `<div class="text-preview" data-inscription-id="${inscription.id}">Loading...</div>`;
-        
+
         default:
             return `<span class="type-icon">${getTypeIcon(inscription.mime_type)}</span>`;
     }
@@ -348,7 +386,7 @@ function renderPreview(inscription, category) {
 async function loadTextPreview(card, inscriptionId) {
     const previewEl = card.querySelector('.text-preview');
     if (!previewEl) return;
-    
+
     try {
         const content = await fetchInscriptionContent(inscriptionId);
         // Truncate for preview
@@ -369,18 +407,20 @@ async function loadTextPreview(card, inscriptionId) {
 function renderGallery() {
     const gallery = galleryElements.gallery();
     gallery.innerHTML = '';
-    
+
     const filtered = filterInscriptions(state.inscriptions);
-    
+
     filtered.forEach((inscription, index) => {
         const card = createInscriptionCard(inscription);
         card.style.animationDelay = `${index * 0.05}s`;
         gallery.appendChild(card);
     });
-    
+
     // Update load more section
     const hasMore = state.inscriptions.length < state.total;
     galleryElements.loadMoreSection().style.display = hasMore ? 'block' : 'none';
+
+    updateSelectionInfo();
 }
 
 /**
@@ -389,6 +429,163 @@ function renderGallery() {
 function filterInscriptions(inscriptions) {
     if (state.currentFilter === 'all') return inscriptions;
     return inscriptions.filter(insc => getContentCategory(insc.mime_type) === state.currentFilter);
+}
+
+// ========================================
+// Gallery selection & sharing
+// ========================================
+
+function toggleInscriptionSelection(id) {
+    if (!id) return;
+    if (state.selectedIds.has(id)) {
+        state.selectedIds.delete(id);
+    } else {
+        state.selectedIds.add(id);
+    }
+
+    // Update card UI if present
+    const card = document.querySelector(`.inscription-card[data-id="${id}"]`);
+    if (card) {
+        const checkbox = card.querySelector('.selection-checkbox');
+        if (state.selectedIds.has(id)) {
+            card.classList.add('selected');
+            if (checkbox) checkbox.textContent = '✓';
+        } else {
+            card.classList.remove('selected');
+            if (checkbox) checkbox.textContent = '';
+        }
+    }
+
+    updateSelectionInfo();
+}
+
+function updateSelectionInfo() {
+    const selectionInfoEl = galleryElements.selectionInfo && galleryElements.selectionInfo();
+    const galleryActionsEl = galleryElements.galleryActions && galleryElements.galleryActions();
+
+    if (!selectionInfoEl || !galleryActionsEl) return;
+
+    if (state.viewingSharedGallery) {
+        galleryActionsEl.style.display = 'block';
+        selectionInfoEl.textContent = '';
+        return;
+    }
+
+    const count = state.selectedIds.size;
+    galleryActionsEl.style.display = state.inscriptions.length > 0 ? 'flex' : 'none';
+    if (count === 0) {
+        selectionInfoEl.textContent = 'No inscriptions selected';
+    } else if (count === 1) {
+        selectionInfoEl.textContent = '1 inscription selected';
+    } else {
+        selectionInfoEl.textContent = `${count} inscriptions selected`;
+    }
+}
+
+async function saveCurrentSelectionAsGallery() {
+    if (!state.address) {
+        showError('Connect your wallet before saving a gallery');
+        return;
+    }
+
+    if (state.selectedIds.size === 0) {
+        showError('Select at least one inscription to save a gallery');
+        return;
+    }
+
+    const name = window.prompt('Name your gallery');
+    if (!name) return;
+
+    const selectedInscriptions = state.inscriptions.filter(ins => state.selectedIds.has(ins.id));
+
+    try {
+        const response = await fetch(`${CONFIG.PROXY_BASE}/galleries`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                address: state.address,
+                name,
+                inscriptions: selectedInscriptions
+            })
+        });
+
+        if (!response.ok) {
+            const errPayload = await response.json().catch(() => null);
+            const message = errPayload?.error || `Failed to save gallery (status ${response.status})`;
+            throw new Error(message);
+        }
+
+        const data = await response.json();
+        state.currentGalleryId = data.id;
+
+        const shareUrl = new URL(window.location.href);
+        shareUrl.searchParams.set('gallery', data.id);
+        shareUrl.searchParams.delete('address');
+
+        hideError();
+        window.alert(`Gallery saved! Share this link:\n\n${shareUrl.toString()}`);
+    } catch (err) {
+        console.error('Error saving gallery:', err);
+        showError(err.message || 'Failed to save gallery');
+    }
+}
+
+async function loadSharedGallery(galleryId) {
+    if (!galleryId) return;
+
+    hideError();
+    setLoading(true);
+
+    try {
+        const response = await fetch(`${CONFIG.PROXY_BASE}/galleries/${encodeURIComponent(galleryId)}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) {
+            const errPayload = await response.json().catch(() => null);
+            const message = errPayload?.error || `Failed to load gallery (status ${response.status})`;
+            throw new Error(message);
+        }
+
+        const data = await response.json();
+
+        state.address = data.address;
+        state.inscriptions = Array.isArray(data.inscriptions) ? data.inscriptions : [];
+        state.total = state.inscriptions.length;
+        state.offset = state.total;
+        state.selectedIds = new Set();
+        state.currentGalleryId = data.id;
+        state.viewingSharedGallery = true;
+        state.sharedGalleryMeta = {
+            name: data.name,
+            address: data.address
+        };
+
+        // Show UI sections
+        galleryElements.statsSection().style.display = 'grid';
+        galleryElements.filterSection().style.display = 'flex';
+
+        const galleryActionsEl = galleryElements.galleryActions();
+        if (galleryActionsEl) {
+            galleryActionsEl.style.display = 'block';
+        }
+
+        const sharedNameEl = galleryElements.sharedGalleryName();
+        const sharedAddressEl = galleryElements.sharedGalleryAddress();
+        if (sharedNameEl) sharedNameEl.textContent = data.name;
+        if (sharedAddressEl) sharedAddressEl.textContent = truncateId(data.address);
+
+        updateStats();
+        renderGallery();
+    } catch (err) {
+        console.error('Error loading shared gallery:', err);
+        showError(err.message || 'Failed to load shared gallery');
+    } finally {
+        setLoading(false);
+    }
 }
 
 // ========================================
@@ -403,19 +600,19 @@ async function openModal(inscription) {
     const modalBody = galleryElements.modalBody();
     const category = getContentCategory(inscription.mime_type);
     const contentUrl = inscription.render_url || inscription.content_url || CONFIG.CONTENT_URL(inscription.id);
-    
+
     let contentHtml = '';
-    
+
     // Render content based on type
     switch (category) {
         case 'image':
             contentHtml = `<div class="modal-preview"><img src="${contentUrl}" alt="Inscription #${inscription.number}"></div>`;
             break;
-        
+
         case 'html':
             contentHtml = `<div class="modal-preview"><iframe src="${contentUrl}" sandbox="allow-scripts"></iframe></div>`;
             break;
-        
+
         case 'text':
             try {
                 const content = await fetchInscriptionContent(inscription.id);
@@ -430,7 +627,7 @@ async function openModal(inscription) {
                 contentHtml = `<div class="modal-preview"><p class="text-content">Unable to load content</p></div>`;
             }
             break;
-        
+
         default:
             contentHtml = `<div class="modal-preview" style="padding: 2rem; text-align: center;">
                 <span style="font-size: 4rem;">${getTypeIcon(inscription.mime_type)}</span>
@@ -438,7 +635,7 @@ async function openModal(inscription) {
                 <a href="${contentUrl}" target="_blank" style="color: var(--accent); margin-top: 0.5rem; display: inline-block;">View raw content →</a>
             </div>`;
     }
-    
+
     modalBody.innerHTML = `
         ${contentHtml}
         <div class="modal-details">
@@ -477,7 +674,7 @@ async function openModal(inscription) {
             </div>` : ''}
         </div>
     `;
-    
+
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -525,10 +722,10 @@ async function loadInscriptions() {
         showError('Connect your wallet to view inscriptions');
         return;
     }
-    
+
     // For now, trust the wallet-provided address and let the backend/proxy enforce validity.
     // This avoids blocking on wallets that return non-standard-but-usable formats.
-    
+
     console.log('loadInscriptions called with address:', address);
 
     // Reset state
@@ -536,28 +733,32 @@ async function loadInscriptions() {
     state.inscriptions = [];
     state.offset = 0;
     state.total = 0;
-    
+    state.selectedIds = new Set();
+    state.currentGalleryId = null;
+    state.viewingSharedGallery = false;
+    state.sharedGalleryMeta = null;
+
     hideError();
     galleryElements.gallery().innerHTML = '';
     galleryElements.statsSection().style.display = 'none';
     galleryElements.filterSection().style.display = 'none';
     galleryElements.loadMoreSection().style.display = 'none';
-    
+
     setLoading(true);
-    
+
     try {
         // First page to discover total
         const first = await fetchInscriptions(address, 0, CONFIG.PAGE_SIZE);
-        
+
         if (first.total === 0) {
             showError('No inscriptions found for this address');
             return;
         }
-        
+
         state.total = first.total;
         state.inscriptions = [...first.results];
         state.offset = first.results.length;
-        
+
         // If there are more, pull the rest in a loop
         while (state.inscriptions.length < state.total) {
             const next = await fetchInscriptions(address, state.offset, CONFIG.PAGE_SIZE);
@@ -565,14 +766,14 @@ async function loadInscriptions() {
             state.inscriptions = [...state.inscriptions, ...next.results];
             state.offset += next.results.length;
         }
-        
+
         // Show UI sections
         galleryElements.statsSection().style.display = 'grid';
         galleryElements.filterSection().style.display = 'flex';
-        
+
         updateStats();
         renderGallery();
-        
+
     } catch (error) {
         showError(error.message || 'Failed to fetch inscriptions');
         console.error('Error loading inscriptions:', error);
@@ -583,7 +784,7 @@ async function loadInscriptions() {
 
 /**
  * Load more inscriptions (pagination)
- * (No-op now – we fetch everything up front)
+ * (No-op now - we fetch everything up front)
  */
 async function loadMore() {
     // Kept for backwards-compatibility with the button, but we
@@ -612,6 +813,14 @@ function isValidBitcoinAddress(address) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Wire up save gallery button if present
+    const saveGalleryBtn = galleryElements.saveGalleryBtn && galleryElements.saveGalleryBtn();
+    if (saveGalleryBtn) {
+        saveGalleryBtn.addEventListener('click', () => {
+            saveCurrentSelectionAsGallery();
+        });
+    }
+
     // (Optional) legacy manual address input support if present in DOM
     const addressInputEl = galleryElements.addressInput ? galleryElements.addressInput() : null;
     if (addressInputEl) {
@@ -619,7 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter') loadInscriptions();
         });
     }
-    
+
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -629,25 +838,31 @@ document.addEventListener('DOMContentLoaded', () => {
             renderGallery();
         });
     });
-    
+
     // Close modal on Escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
     });
-    
-    // Auto-load when wallet is verified
+
+    // Auto-load when wallet is verified (skip if viewing a shared gallery)
     window.addEventListener('wallet:verified', (ev) => {
         console.log('wallet:verified event detail:', ev.detail);
+        if (state.viewingSharedGallery) return;
         hideError();
         loadInscriptions();
     });
-
-    // (Optional) legacy URL param support if an address input exists
+    
+    // URL param support
     const urlParams = new URLSearchParams(window.location.search);
-    const addressParam = urlParams.get('address');
-    if (addressParam && addressInputEl) {
-        addressInputEl.value = addressParam;
-        loadInscriptions();
+    const galleryParam = urlParams.get('gallery');
+    if (galleryParam) {
+        loadSharedGallery(galleryParam);
+    } else {
+        const addressParam = urlParams.get('address');
+        if (addressParam && addressInputEl) {
+            addressInputEl.value = addressParam;
+            loadInscriptions();
+        }
     }
 });
 

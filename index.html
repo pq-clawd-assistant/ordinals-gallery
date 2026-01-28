@@ -69,6 +69,19 @@
             <button class="filter-btn" data-filter="other">Other</button>
         </section>
 
+        <!-- Gallery actions: selection + shared gallery hint -->
+        <section id="galleryActions" class="gallery-actions" style="display: none;">
+            <div class="gallery-actions-left">
+                <button id="saveGalleryBtn" class="btn btn-primary btn-small" type="button">Save selection as gallery</button>
+                <span id="selectionInfo" class="selection-info">No inscriptions selected</span>
+            </div>
+            <div class="gallery-actions-right">
+                <span class="shared-gallery-label">Viewing shared gallery:</span>
+                <span id="sharedGalleryName" class="shared-gallery-name"></span>
+                <code id="sharedGalleryAddress" class="shared-gallery-address"></code>
+            </div>
+        </section>
+
         <!-- Error Message -->
         <div id="errorMessage" class="error-message" style="display: none;"></div>
 

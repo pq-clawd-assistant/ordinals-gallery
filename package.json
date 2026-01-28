@@ -2,12 +2,13 @@
   "name": "bis-proxy",
   "version": "1.0.0",
   "type": "module",
-  "main": "bis-proxy.example.js",
+  "main": "bis-proxy.js",
   "scripts": {
-    "start": "node bis-proxy.example.js"
+    "start": "node bis-proxy.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7"
   }
 }
