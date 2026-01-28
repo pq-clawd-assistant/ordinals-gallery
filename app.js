@@ -105,7 +105,8 @@ async function fetchInscriptions(address, offset = 0, limit = CONFIG.PAGE_SIZE) 
     }
 
     const data = await response.json();
-    const raw = Array.isArray(data.inscriptions) ? data.inscriptions : [];
+    // Best in Slot returns { data: [ ... ], block_height: ... }
+    const raw = Array.isArray(data.data) ? data.data : [];
 
     const results = raw.map(ins => ({
         id: ins.inscription_id,
