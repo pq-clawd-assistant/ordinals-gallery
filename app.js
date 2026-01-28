@@ -526,11 +526,8 @@ async function loadInscriptions() {
         return;
     }
     
-    // Basic address validation (defensive check even for wallet-provided address)
-    if (!isValidBitcoinAddress(address)) {
-        showError('Invalid Bitcoin address format returned by wallet.');
-        return;
-    }
+    // For now, trust the wallet-provided address and let the backend/proxy enforce validity.
+    // This avoids blocking on wallets that return non-standard-but-usable formats.
     
     // Reset state
     state.address = address;
