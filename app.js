@@ -4,7 +4,7 @@
  * A client-side web application to view Bitcoin ordinals inscriptions
  * held by any Bitcoin wallet address.
  * 
- * Uses the Best in Slot (BIS) wallet API for inscription discovery: https://docs.bestinslot.xyz/
+ * Uses the Hiro Ordinals API in the browser (Best in Slot planned via a backend proxy): https://docs.hiro.so/ordinals
  */
 
 // ========================================
@@ -12,17 +12,14 @@
 // ========================================
 
 const CONFIG = {
-    // Best in Slot (BIS) wallet API base URL
-    BIS_API_BASE: 'https://api.bestinslot.xyz/v3',
-
-    // BIS API key (can be overridden via env if you wire it through)
-    BIS_API_KEY: '95bd3666-917f-4305-9d35-caefa0a70d07',
+    // Hiro Ordinals API base URL (browser-safe)
+    API_BASE: 'https://api.hiro.so/ordinals/v1',
     
-    // Number of inscriptions to request (BIS supports large counts; 2000 is plenty for a single wallet)
-    PAGE_SIZE: 2000,
+    // Number of inscriptions to load per page (Hiro API max is 60)
+    PAGE_SIZE: 60,
     
-    // Content URL for viewing inscription content (fallback only; BIS responses include full content_url)
-    CONTENT_URL: (id) => `https://ordinals.com/content/${id}`,
+    // Content URL for viewing inscription content
+    CONTENT_URL: (id) => `https://api.hiro.so/ordinals/v1/inscriptions/${id}/content`,
     
     // External links
     ORDINALS_COM: (id) => `https://ordinals.com/inscription/${id}`,
@@ -80,60 +77,37 @@ const elements = {
 // ========================================
 
 /**
- * Fetch inscriptions for a given address via Best in Slot
- * We request a large count in a single call and normalize the
- * response into the shape the rest of the app expects.
+ * Fetch inscriptions for a given address (Hiro in-browser)
+ *
+ * NOTE: Best in Slot is used server-side via a proxy only; the
+ * browser talks to Hiro to avoid CORS issues.
  *
  * @param {string} address - Bitcoin wallet address
- * @param {number} offset - Ignored (BIS call is all-in-one)
- * @param {number} limit - Ignored (BIS call is all-in-one)
+ * @param {number} offset - Pagination offset
+ * @param {number} limit - Number of results to fetch
  * @returns {Promise<{results: Array, total: number}>}
  */
 async function fetchInscriptions(address, offset = 0, limit = CONFIG.PAGE_SIZE) {
-    const apiKey = CONFIG.BIS_API_KEY;
-    const url = `${CONFIG.BIS_API_BASE}/wallet/inscriptions?address=${encodeURIComponent(address)}&sort_by=inscr_num&order=desc&offset=0&count=${CONFIG.PAGE_SIZE}&exclude_brc20=false`;
-
+    // Hiro enforces limit <= 60; cap here defensively so callers can pass
+    // any page size without causing 400s.
+    const safeLimit = Math.min(Math.max(1, limit || CONFIG.PAGE_SIZE), 60);
+    const url = `${CONFIG.API_BASE}/inscriptions?address=${encodeURIComponent(address)}&offset=${offset}&limit=${safeLimit}`;
+    
     const response = await fetch(url, {
-        headers: {
-            'x-api-key': apiKey,
-            'Accept': 'application/json'
-        }
+        headers: { 'Accept': 'application/json' }
     });
-
+    
     if (!response.ok) {
         if (response.status === 404) {
             throw new Error('Address not found or has no inscriptions');
         }
         if (response.status === 429) {
-            throw new Error('Rate limit from Best in Slot exceeded. Please wait a moment and try again.');
+            throw new Error('Rate limit exceeded. Please wait a moment and try again.');
         }
-        throw new Error(`BIS API error: ${response.status}`);
+        throw new Error(`API error: ${response.status}`);
     }
-
-    const data = await response.json();
-    const raw = Array.isArray(data.inscriptions) ? data.inscriptions : [];
-
-    const results = raw.map(ins => ({
-        // Normalize field names used throughout the app
-        id: ins.inscription_id,
-        number: ins.inscription_number,
-        mime_type: ins.mime_type || '',
-        genesis_timestamp: ins.genesis_ts,
-        genesis_block_height: ins.genesis_height,
-        address: ins.owner_wallet_addr,
-        // Store BIS URLs so preview/modal can use them directly
-        content_url: ins.content_url,
-        render_url: ins.render_url,
-        bis_url: ins.bis_url,
-        // Fallback fields used by UI
-        content_length: ins.output_value || 0,
-        sat_rarity: 'Unknown'
-    }));
-
-    return {
-        results,
-        total: results.length
-    };
+    
+    return response.json();
 }
 
 /**
