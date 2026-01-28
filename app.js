@@ -52,10 +52,10 @@ const state = {
 };
 
 // ========================================
-// DOM Elements
+// DOM Elements (namespaced to avoid clashes with wallet.js)
 // ========================================
 
-const elements = {
+const galleryElements = {
     addressInput: () => document.getElementById('addressInput'),
     searchBtn: () => document.getElementById('searchBtn'),
     statsSection: () => document.getElementById('statsSection'),
@@ -167,12 +167,12 @@ async function fetchInscriptionContent(inscriptionId) {
  */
 function setLoading(loading) {
     state.loading = loading;
-    const loadingEl = elements.loadingIndicator();
+    const loadingEl = galleryElements.loadingIndicator();
     if (loadingEl) {
         loadingEl.style.display = loading ? 'block' : 'none';
     }
 
-    const btn = elements.searchBtn ? elements.searchBtn() : null;
+    const btn = galleryElements.searchBtn ? galleryElements.searchBtn() : null;
     if (btn) {
         btn.disabled = loading;
         const btnText = btn.querySelector('.btn-text');
@@ -188,7 +188,7 @@ function setLoading(loading) {
  * Show error message
  */
 function showError(message) {
-    const errorEl = elements.errorMessage();
+    const errorEl = galleryElements.errorMessage();
     errorEl.textContent = message;
     errorEl.style.display = 'block';
 }
@@ -197,7 +197,7 @@ function showError(message) {
  * Hide error message
  */
 function hideError() {
-    elements.errorMessage().style.display = 'none';
+    galleryElements.errorMessage().style.display = 'none';
 }
 
 /**
@@ -217,13 +217,13 @@ function updateStats() {
         else otherCount++;
     });
     
-    elements.totalCount().textContent = state.total.toLocaleString();
-    elements.imageCount().textContent = imageCount.toLocaleString();
-    elements.textCount().textContent = textCount.toLocaleString();
-    elements.otherCount().textContent = otherCount.toLocaleString();
+    galleryElements.totalCount().textContent = state.total.toLocaleString();
+    galleryElements.imageCount().textContent = imageCount.toLocaleString();
+    galleryElements.textCount().textContent = textCount.toLocaleString();
+    galleryElements.otherCount().textContent = otherCount.toLocaleString();
     
-    elements.showingCount().textContent = inscriptions.length.toLocaleString();
-    elements.totalInscriptions().textContent = state.total.toLocaleString();
+    galleryElements.showingCount().textContent = inscriptions.length.toLocaleString();
+    galleryElements.totalInscriptions().textContent = state.total.toLocaleString();
 }
 
 /**
@@ -367,7 +367,7 @@ async function loadTextPreview(card, inscriptionId) {
  * Render all inscriptions to the gallery
  */
 function renderGallery() {
-    const gallery = elements.gallery();
+    const gallery = galleryElements.gallery();
     gallery.innerHTML = '';
     
     const filtered = filterInscriptions(state.inscriptions);
@@ -380,7 +380,7 @@ function renderGallery() {
     
     // Update load more section
     const hasMore = state.inscriptions.length < state.total;
-    elements.loadMoreSection().style.display = hasMore ? 'block' : 'none';
+    galleryElements.loadMoreSection().style.display = hasMore ? 'block' : 'none';
 }
 
 /**
@@ -399,8 +399,8 @@ function filterInscriptions(inscriptions) {
  * Open modal with inscription details
  */
 async function openModal(inscription) {
-    const modal = elements.modal();
-    const modalBody = elements.modalBody();
+    const modal = galleryElements.modal();
+    const modalBody = galleryElements.modalBody();
     const category = getContentCategory(inscription.mime_type);
     const contentUrl = inscription.render_url || inscription.content_url || CONFIG.CONTENT_URL(inscription.id);
     
@@ -486,8 +486,8 @@ async function openModal(inscription) {
  * Close modal
  */
 function closeModal(event) {
-    if (event && event.target !== elements.modal()) return;
-    elements.modal().classList.remove('active');
+    if (event && event.target !== galleryElements.modal()) return;
+    galleryElements.modal().classList.remove('active');
     document.body.style.overflow = '';
 }
 
@@ -515,7 +515,7 @@ async function loadInscriptions() {
     if (window.WalletConnect && window.WalletConnect.isConnected()) {
         address = window.WalletConnect.getAddress();
     } else {
-        const inputEl = elements.addressInput ? elements.addressInput() : null;
+        const inputEl = galleryElements.addressInput ? galleryElements.addressInput() : null;
         if (inputEl) {
             address = inputEl.value.trim();
         }
@@ -538,10 +538,10 @@ async function loadInscriptions() {
     state.total = 0;
     
     hideError();
-    elements.gallery().innerHTML = '';
-    elements.statsSection().style.display = 'none';
-    elements.filterSection().style.display = 'none';
-    elements.loadMoreSection().style.display = 'none';
+    galleryElements.gallery().innerHTML = '';
+    galleryElements.statsSection().style.display = 'none';
+    galleryElements.filterSection().style.display = 'none';
+    galleryElements.loadMoreSection().style.display = 'none';
     
     setLoading(true);
     
@@ -567,8 +567,8 @@ async function loadInscriptions() {
         }
         
         // Show UI sections
-        elements.statsSection().style.display = 'grid';
-        elements.filterSection().style.display = 'flex';
+        galleryElements.statsSection().style.display = 'grid';
+        galleryElements.filterSection().style.display = 'flex';
         
         updateStats();
         renderGallery();
@@ -613,7 +613,7 @@ function isValidBitcoinAddress(address) {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // (Optional) legacy manual address input support if present in DOM
-    const addressInputEl = elements.addressInput ? elements.addressInput() : null;
+    const addressInputEl = galleryElements.addressInput ? galleryElements.addressInput() : null;
     if (addressInputEl) {
         addressInputEl.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') loadInscriptions();
