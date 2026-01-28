@@ -473,6 +473,7 @@ function escapeHtml(text) {
 
 /**
  * Load inscriptions for the entered address
+ * Now fetches ALL pages from Hiro and shows everything in one go
  */
 async function loadInscriptions() {
     const address = elements.addressInput().value.trim();
@@ -503,17 +504,25 @@ async function loadInscriptions() {
     setLoading(true);
     
     try {
-        const data = await fetchInscriptions(address, 0, CONFIG.PAGE_SIZE);
+        // First page to discover total
+        const first = await fetchInscriptions(address, 0, CONFIG.PAGE_SIZE);
         
-        if (data.total === 0) {
+        if (first.total === 0) {
             showError('No inscriptions found for this address');
-            setLoading(false);
             return;
         }
         
-        state.inscriptions = data.results;
-        state.total = data.total;
-        state.offset = data.results.length;
+        state.total = first.total;
+        state.inscriptions = [...first.results];
+        state.offset = first.results.length;
+        
+        // If there are more, pull the rest in a loop
+        while (state.inscriptions.length < state.total) {
+            const next = await fetchInscriptions(address, state.offset, CONFIG.PAGE_SIZE);
+            if (!next.results || next.results.length === 0) break; // safety
+            state.inscriptions = [...state.inscriptions, ...next.results];
+            state.offset += next.results.length;
+        }
         
         // Show UI sections
         elements.statsSection().style.display = 'grid';
@@ -532,29 +541,12 @@ async function loadInscriptions() {
 
 /**
  * Load more inscriptions (pagination)
+ * (No-op now – we fetch everything up front)
  */
 async function loadMore() {
-    if (state.loading || state.inscriptions.length >= state.total) return;
-    
-    const btn = elements.loadMoreBtn();
-    btn.disabled = true;
-    btn.textContent = 'Loading...';
-    
-    try {
-        const data = await fetchInscriptions(state.address, state.offset, CONFIG.PAGE_SIZE);
-        
-        state.inscriptions = [...state.inscriptions, ...data.results];
-        state.offset += data.results.length;
-        
-        updateStats();
-        renderGallery();
-        
-    } catch (error) {
-        showError(error.message || 'Failed to load more inscriptions');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Load More';
-    }
+    // Kept for backwards-compatibility with the button, but we
+    // now fetch all pages in a single go in loadInscriptions.
+    return;
 }
 
 /**
