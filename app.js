@@ -42,6 +42,7 @@ const CONFIG = {
 // ========================================
 
 const state = {
+    // Address whose inscriptions are currently shown in the grid
     address: '',
     inscriptions: [],
     total: 0,
@@ -52,7 +53,11 @@ const state = {
     selectedIds: new Set(),
     currentGalleryId: null,
     viewingSharedGallery: false,
-    sharedGalleryMeta: null
+    sharedGalleryMeta: null,
+    // Currently connected wallet (if any)
+    connectedAddress: null,
+    // Whether the currently viewed shared gallery belongs to connectedAddress
+    ownsCurrentGallery: false
 };
 
 // ========================================
@@ -82,7 +87,12 @@ const galleryElements = {
     saveGalleryBtn: () => document.getElementById('saveGalleryBtn'),
     selectionInfo: () => document.getElementById('selectionInfo'),
     sharedGalleryName: () => document.getElementById('sharedGalleryName'),
-    sharedGalleryAddress: () => document.getElementById('sharedGalleryAddress')
+    sharedGalleryAddress: () => document.getElementById('sharedGalleryAddress'),
+    sharedGalleryMeta: () => document.getElementById('sharedGalleryMeta'),
+    // My galleries
+    myGalleriesSection: () => document.getElementById('myGalleriesSection'),
+    myGalleriesList: () => document.getElementById('myGalleriesList'),
+    myGalleriesEmpty: () => document.getElementById('myGalleriesEmpty')
 };
 
 // ========================================
@@ -310,11 +320,16 @@ function createInscriptionCard(inscription) {
         card.classList.add('selected');
     }
 
-    const selectionToggleHtml = state.viewingSharedGallery ? '' : `
+    const isConnected = !!(state.connectedAddress || (window.WalletConnect && window.WalletConnect.isConnected && window.WalletConnect.isConnected()));
+    const allowSelectionInShared = state.viewingSharedGallery && state.ownsCurrentGallery && isConnected;
+    const allowSelectionInWalletView = !state.viewingSharedGallery && isConnected;
+    const showSelectionToggle = allowSelectionInShared || allowSelectionInWalletView;
+
+    const selectionToggleHtml = showSelectionToggle ? `
         <button class="selection-toggle" type="button" title="Select inscription">
             <span class="selection-checkbox">${isSelected ? '✓' : ''}</span>
         </button>
-    `;
+    ` : '';
 
     card.innerHTML = `
         <div class="inscription-preview">
@@ -340,7 +355,7 @@ function createInscriptionCard(inscription) {
         openModal(inscription);
     });
 
-    if (!state.viewingSharedGallery) {
+    if (showSelectionToggle) {
         const toggleBtn = card.querySelector('.selection-toggle');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', (event) => {
@@ -462,17 +477,36 @@ function toggleInscriptionSelection(id) {
 function updateSelectionInfo() {
     const selectionInfoEl = galleryElements.selectionInfo && galleryElements.selectionInfo();
     const galleryActionsEl = galleryElements.galleryActions && galleryElements.galleryActions();
+    const sharedMetaEl = galleryElements.sharedGalleryMeta && galleryElements.sharedGalleryMeta();
 
     if (!selectionInfoEl || !galleryActionsEl) return;
 
-    if (state.viewingSharedGallery) {
-        galleryActionsEl.style.display = 'block';
-        selectionInfoEl.textContent = '';
+    const isConnected = !!(state.connectedAddress || (window.WalletConnect && window.WalletConnect.isConnected && window.WalletConnect.isConnected()));
+
+    // Default: hide everything when not connected
+    if (!isConnected) {
+        galleryActionsEl.style.display = 'none';
+        if (sharedMetaEl) sharedMetaEl.style.display = 'none';
         return;
     }
 
-    const count = state.selectedIds.size;
+    const isOwnSharedGallery = state.viewingSharedGallery && state.ownsCurrentGallery;
+
+    // When viewing a shared gallery that is not owned by the connected wallet,
+    // hide selection + save UI, but show the shared gallery meta pill.
+    if (state.viewingSharedGallery && !isOwnSharedGallery) {
+        galleryActionsEl.style.display = 'none';
+        if (sharedMetaEl) sharedMetaEl.style.display = 'inline-flex';
+        return;
+    }
+
+    // Wallet view or own gallery: show selection UI; shared meta only when in shared mode
     galleryActionsEl.style.display = state.inscriptions.length > 0 ? 'flex' : 'none';
+    if (sharedMetaEl) {
+        sharedMetaEl.style.display = state.viewingSharedGallery ? 'inline-flex' : 'none';
+    }
+
+    const count = state.selectedIds.size;
     if (count === 0) {
         selectionInfoEl.textContent = 'No inscriptions selected';
     } else if (count === 1) {
@@ -483,8 +517,15 @@ function updateSelectionInfo() {
 }
 
 async function saveCurrentSelectionAsGallery() {
-    if (!state.address) {
+    const connectedAddress = state.connectedAddress || (window.WalletConnect && window.WalletConnect.getAddress && window.WalletConnect.getAddress());
+    if (!connectedAddress) {
         showError('Connect your wallet before saving a gallery');
+        return;
+    }
+
+    if (state.address && connectedAddress !== state.address && !state.viewingSharedGallery) {
+        // Safety: in wallet view, only allow saving galleries for the active wallet address.
+        showError('You can only save galleries for your connected wallet address');
         return;
     }
 
@@ -506,7 +547,7 @@ async function saveCurrentSelectionAsGallery() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                address: state.address,
+                address: connectedAddress,
                 name,
                 inscriptions: selectedInscriptions
             })
@@ -527,13 +568,149 @@ async function saveCurrentSelectionAsGallery() {
 
         hideError();
         window.alert(`Gallery saved! Share this link:\n\n${shareUrl.toString()}`);
+
+        // Refresh "My galleries" list for the connected wallet
+        refreshMyGalleries();
     } catch (err) {
         console.error('Error saving gallery:', err);
         showError(err.message || 'Failed to save gallery');
     }
 }
 
-async function loadSharedGallery(galleryId) {
+function getConnectedWalletAddress() {
+    if (state.connectedAddress) return state.connectedAddress;
+    if (window.WalletConnect && typeof window.WalletConnect.getAddress === 'function') {
+        return window.WalletConnect.getAddress();
+    }
+    try {
+        const fromStorage = window.localStorage && window.localStorage.getItem('wallet_address');
+        return fromStorage || null;
+    } catch {
+        return null;
+    }
+}
+
+async function refreshMyGalleries() {
+    const address = getConnectedWalletAddress();
+    state.connectedAddress = address || null;
+
+    const sectionEl = galleryElements.myGalleriesSection && galleryElements.myGalleriesSection();
+    const listEl = galleryElements.myGalleriesList && galleryElements.myGalleriesList();
+    const emptyEl = galleryElements.myGalleriesEmpty && galleryElements.myGalleriesEmpty();
+
+    if (!sectionEl || !listEl || !emptyEl) return;
+
+    if (!address) {
+        sectionEl.style.display = 'none';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${CONFIG.PROXY_BASE}/galleries?address=${encodeURIComponent(address)}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!resp.ok) {
+            console.warn('Failed to load galleries list for address', address, resp.status);
+            sectionEl.style.display = 'none';
+            return;
+        }
+
+        const payload = await resp.json();
+        const galleries = Array.isArray(payload.galleries) ? payload.galleries : [];
+
+        if (galleries.length === 0) {
+            sectionEl.style.display = 'block';
+            listEl.innerHTML = '';
+            emptyEl.style.display = 'block';
+            return;
+        }
+
+        sectionEl.style.display = 'block';
+        emptyEl.style.display = 'none';
+
+        listEl.innerHTML = '';
+        galleries.forEach((g) => {
+            const item = document.createElement('div');
+            item.className = 'my-gallery-item';
+            item.dataset.id = g.id;
+
+            const created = g.createdAt ? new Date(g.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+            item.innerHTML = `
+                <div class="my-gallery-main">
+                    <span class="my-gallery-name">${escapeHtml(g.name || 'Untitled gallery')}</span>
+                    <span class="my-gallery-meta">${g.inscriptionCount || 0} inscriptions · ${created}</span>
+                </div>
+                <div class="my-gallery-actions">
+                    <button class="btn btn-secondary" data-action="open" type="button">Open</button>
+                    <button class="btn btn-secondary" data-action="edit" type="button">Edit selection</button>
+                    <button class="btn btn-danger" data-action="delete" type="button">Delete</button>
+                </div>
+            `;
+
+            const actionsEl = item.querySelector('.my-gallery-actions');
+            if (actionsEl) {
+                actionsEl.addEventListener('click', (event) => {
+                    const btn = event.target.closest('button');
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = g.id;
+                    if (action === 'open' || action === 'edit') {
+                        const asEdit = action === 'edit';
+                        loadSharedGallery(id, { fromMyGalleries: true, editMode: asEdit });
+                    } else if (action === 'delete') {
+                        const confirmed = window.confirm('Delete this gallery? This cannot be undone.');
+                        if (!confirmed) return;
+                        deleteGallery(id, address);
+                    }
+                });
+            }
+
+            listEl.appendChild(item);
+        });
+    } catch (err) {
+        console.warn('Error loading galleries list', err);
+        sectionEl.style.display = 'none';
+    }
+}
+
+async function deleteGallery(id, address) {
+    try {
+        const resp = await fetch(`${CONFIG.PROXY_BASE}/galleries/${encodeURIComponent(id)}?address=${encodeURIComponent(address)}`, {
+            method: 'DELETE'
+        });
+
+        if (!resp.ok && resp.status !== 204) {
+            const errPayload = await resp.json().catch(() => null);
+            const message = errPayload?.error || `Failed to delete gallery (status ${resp.status})`;
+            throw new Error(message);
+        }
+
+        // If we just deleted the gallery we're viewing, clear it back to wallet view
+        if (state.currentGalleryId === String(id)) {
+            state.currentGalleryId = null;
+            state.viewingSharedGallery = false;
+            state.sharedGalleryMeta = null;
+            state.ownsCurrentGallery = false;
+            state.selectedIds = new Set();
+            hideError();
+            galleryElements.gallery().innerHTML = '';
+            galleryElements.statsSection().style.display = 'none';
+            galleryElements.filterSection().style.display = 'none';
+            updateSelectionInfo();
+        }
+
+        await refreshMyGalleries();
+    } catch (err) {
+        console.error('Failed to delete gallery', err);
+        showError(err.message || 'Failed to delete gallery');
+    }
+}
+
+async function loadSharedGallery(galleryId, options = {}) {
     if (!galleryId) return;
 
     hideError();
@@ -556,13 +733,23 @@ async function loadSharedGallery(galleryId) {
         state.inscriptions = Array.isArray(data.inscriptions) ? data.inscriptions : [];
         state.total = state.inscriptions.length;
         state.offset = state.total;
-        state.selectedIds = new Set();
         state.currentGalleryId = data.id;
         state.viewingSharedGallery = true;
         state.sharedGalleryMeta = {
             name: data.name,
             address: data.address
         };
+
+        const connected = getConnectedWalletAddress();
+        state.connectedAddress = connected || state.connectedAddress || null;
+        state.ownsCurrentGallery = !!(connected && connected === data.address);
+
+        // In "edit selection" mode for an owned gallery, pre-select all
+        if (options.editMode && state.ownsCurrentGallery) {
+            state.selectedIds = new Set(state.inscriptions.map((ins) => ins.id));
+        } else {
+            state.selectedIds = new Set();
+        }
 
         // Show UI sections
         galleryElements.statsSection().style.display = 'grid';
@@ -580,6 +767,7 @@ async function loadSharedGallery(galleryId) {
 
         updateStats();
         renderGallery();
+        updateSelectionInfo();
     } catch (err) {
         console.error('Error loading shared gallery:', err);
         showError(err.message || 'Failed to load shared gallery');
@@ -844,25 +1032,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') closeModal();
     });
 
-    // Auto-load when wallet is verified (skip if viewing a shared gallery)
+    // Keep "My galleries" in sync with any existing session
+    refreshMyGalleries();
+
+    // Auto-load when wallet is verified (skip overwriting a shared gallery view)
     window.addEventListener('wallet:verified', (ev) => {
         console.log('wallet:verified event detail:', ev.detail);
+        if (ev?.detail?.address) {
+            state.connectedAddress = ev.detail.address;
+        }
+        refreshMyGalleries();
         if (state.viewingSharedGallery) return;
         hideError();
         loadInscriptions();
     });
-    
+
+    // When wallet disconnects, clear connected state + hide wallet-only UI
+    window.addEventListener('wallet:disconnected', () => {
+        state.connectedAddress = null;
+        state.ownsCurrentGallery = false;
+        refreshMyGalleries();
+        updateSelectionInfo();
+    });
+
     // URL param support
     const urlParams = new URLSearchParams(window.location.search);
     const galleryParam = urlParams.get('gallery');
     if (galleryParam) {
         loadSharedGallery(galleryParam);
-    } else {
-        const addressParam = urlParams.get('address');
-        if (addressParam && addressInputEl) {
-            addressInputEl.value = addressParam;
-            loadInscriptions();
-        }
     }
 });
 
@@ -876,8 +1073,18 @@ window.OrdinalsGallery = {
     loadForAddress(address) {
         console.log('OrdinalsGallery.loadForAddress called with:', address);
         if (address) {
-            state.address = address;
+            state.connectedAddress = address;
         }
+
+        // Never overwrite an explicitly shared gallery view (?gallery=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const galleryParam = urlParams.get('gallery');
+        if (galleryParam) {
+            refreshMyGalleries();
+            updateSelectionInfo();
+            return;
+        }
+
         loadInscriptions();
     }
 };

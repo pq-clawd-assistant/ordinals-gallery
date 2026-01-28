@@ -76,7 +76,7 @@ app.use(express.json({ limit: '1mb' }));
 // Very small CORS helper suitable for a single frontend origin or GitHub Pages.
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -146,6 +146,36 @@ app.get('/wallet/inscriptions', async (req, res) => {
 // Inscription objects are passed through from the frontend and *not* validated
 // in detail here; the gallery endpoint is simply a durable store for whatever
 // subset the user chose.
+
+// List galleries for an address (metadata only)
+app.get('/galleries', (req, res) => {
+  const { address } = req.query;
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid address' });
+  }
+
+  db.all(
+    'SELECT id, address, name, inscription_ids, created_at FROM galleries WHERE address = ? ORDER BY created_at DESC',
+    [address],
+    (err, rows) => {
+      if (err) {
+        console.error('Failed to list galleries', err);
+        return res.status(500).json({ error: 'Failed to list galleries' });
+      }
+
+      const galleries = (rows || []).map((row) => ({
+        id: String(row.id),
+        address: row.address,
+        name: row.name,
+        inscriptionCount: (row.inscription_ids || '').split(',').filter(Boolean).length,
+        createdAt: row.created_at,
+      }));
+
+      res.json({ address, galleries });
+    }
+  );
+});
 
 app.post('/galleries', (req, res) => {
   const { address, name, inscriptions } = req.body || {};
@@ -232,6 +262,40 @@ app.get('/galleries/:id', (req, res) => {
       inscriptionCount: inscriptions.length,
       createdAt: row.created_at,
       inscriptions,
+    });
+  });
+});
+
+// Delete a gallery (requires matching address for lightweight auth)
+app.delete('/galleries/:id', (req, res) => {
+  const { id } = req.params;
+  const { address } = req.query;
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid address' });
+  }
+
+  db.get('SELECT address FROM galleries WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Failed to look up gallery for delete', err);
+      return res.status(500).json({ error: 'Failed to delete gallery' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    if (row.address !== address) {
+      return res.status(403).json({ error: 'Address does not own this gallery' });
+    }
+
+    db.run('DELETE FROM galleries WHERE id = ?', [id], (deleteErr) => {
+      if (deleteErr) {
+        console.error('Failed to delete gallery', deleteErr);
+        return res.status(500).json({ error: 'Failed to delete gallery' });
+      }
+
+      return res.status(204).send();
     });
   });
 });

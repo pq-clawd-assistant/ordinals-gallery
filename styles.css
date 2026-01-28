@@ -232,6 +232,102 @@ body {
     gap: 1.5rem;
 }
 
+/* My Galleries */
+.my-galleries-section {
+    max-width: 1000px;
+    margin: 2rem auto 0 auto;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.my-galleries-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.my-galleries-header h2 {
+    font-size: 1.1rem;
+}
+
+.my-galleries-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.my-galleries-empty {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.my-galleries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.my-gallery-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.my-gallery-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.my-gallery-name {
+    font-weight: 500;
+}
+
+.my-gallery-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.my-gallery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.my-gallery-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.7rem;
+}
+
+.my-gallery-actions .btn-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.my-gallery-actions .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.my-gallery-actions .btn-danger {
+    background: transparent;
+    color: var(--error);
+    border-color: rgba(255, 82, 82, 0.4);
+}
+
+.my-gallery-actions .btn-danger:hover {
+    border-color: var(--error);
+    background: rgba(255, 82, 82, 0.05);
+}
+
 /* Gallery actions (selection + shared state) */
 .gallery-actions {
     display: flex;

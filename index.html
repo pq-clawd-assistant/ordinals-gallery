@@ -75,11 +75,23 @@
                 <button id="saveGalleryBtn" class="btn btn-primary btn-small" type="button">Save selection as gallery</button>
                 <span id="selectionInfo" class="selection-info">No inscriptions selected</span>
             </div>
-            <div class="gallery-actions-right">
+            <div class="gallery-actions-right" id="sharedGalleryMeta" style="display: none;">
                 <span class="shared-gallery-label">Viewing shared gallery:</span>
                 <span id="sharedGalleryName" class="shared-gallery-name"></span>
                 <code id="sharedGalleryAddress" class="shared-gallery-address"></code>
             </div>
+        </section>
+
+        <!-- My Galleries Section (for connected wallet) -->
+        <section id="myGalleriesSection" class="my-galleries-section" style="display: none;">
+            <div class="my-galleries-header">
+                <h2>My galleries</h2>
+                <p class="my-galleries-subtitle">Saved selections tied to your connected wallet.</p>
+            </div>
+            <div id="myGalleriesEmpty" class="my-galleries-empty" style="display: none;">
+                <p>No galleries yet. Select inscriptions above and save them as a named gallery.</p>
+            </div>
+            <div id="myGalleriesList" class="my-galleries-list"></div>
         </section>
 
         <!-- Error Message -->
