@@ -15,8 +15,8 @@ const CONFIG = {
     // Hiro Ordinals API base URL
     API_BASE: 'https://api.hiro.so/ordinals/v1',
     
-    // Number of inscriptions to load per page
-    PAGE_SIZE: 20,
+    // Number of inscriptions to load per page (Hiro API max is 60)
+    PAGE_SIZE: 60,
     
     // Content URL for viewing inscription content
     CONTENT_URL: (id) => `https://api.hiro.so/ordinals/v1/inscriptions/${id}/content`,
@@ -84,7 +84,10 @@ const elements = {
  * @returns {Promise<{results: Array, total: number}>}
  */
 async function fetchInscriptions(address, offset = 0, limit = CONFIG.PAGE_SIZE) {
-    const url = `${CONFIG.API_BASE}/inscriptions?address=${encodeURIComponent(address)}&offset=${offset}&limit=${limit}`;
+    // Hiro enforces limit <= 60; cap here defensively so callers can pass
+    // any page size without causing 400s.
+    const safeLimit = Math.min(Math.max(1, limit || CONFIG.PAGE_SIZE), 60);
+    const url = `${CONFIG.API_BASE}/inscriptions?address=${encodeURIComponent(address)}&offset=${offset}&limit=${safeLimit}`;
     
     const response = await fetch(url, {
         headers: { 'Accept': 'application/json' }
