@@ -454,6 +454,39 @@ function renderGallery() {
 
     const filtered = filterInscriptions(state.inscriptions);
 
+    // Shared gallery: minimalist image-only grid with ordinals.com links
+    if (state.viewingSharedGallery) {
+        filtered.forEach((inscription) => {
+            const category = getContentCategory(inscription.mime_type);
+            const contentUrl = inscription.render_url || inscription.content_url || CONFIG.CONTENT_URL(inscription.id);
+            const ordUrl = CONFIG.ORDINALS_COM(inscription.id);
+
+            const wrapper = document.createElement('a');
+            wrapper.href = ordUrl;
+            wrapper.target = '_blank';
+            wrapper.rel = 'noopener noreferrer';
+            wrapper.className = 'shared-gallery-card';
+
+            if (category === 'image') {
+                const img = document.createElement('img');
+                img.src = contentUrl;
+                img.alt = `Inscription #${inscription.number}`;
+                img.loading = 'lazy';
+                wrapper.appendChild(img);
+            } else {
+                wrapper.innerHTML = `<div class="inscription-preview">${renderPreview(inscription, category)}</div>`;
+            }
+
+            gallery.appendChild(wrapper);
+        });
+
+        // No pagination controls or selection state in shared view
+        galleryElements.loadMoreSection().style.display = 'none';
+        updateSelectionInfo();
+        return;
+    }
+
+    // Wallet view: full cards with overlays and metadata
     filtered.forEach((inscription, index) => {
         const card = createInscriptionCard(inscription);
         card.style.animationDelay = `${index * 0.05}s`;
@@ -808,12 +841,21 @@ async function loadSharedGallery(galleryId, options = {}) {
         }
 
         // Show UI sections
-        galleryElements.statsSection().style.display = 'grid';
-        galleryElements.filterSection().style.display = 'flex';
+        // In shared gallery view, hide stats/filters and show minimal header
+        const sharedHeaderEl = document.getElementById('sharedGalleryHeader');
+        const sharedTitleEl = document.getElementById('sharedGalleryTitle');
+
+        galleryElements.statsSection().style.display = 'none';
+        galleryElements.filterSection().style.display = 'none';
 
         const galleryActionsEl = galleryElements.galleryActions();
         if (galleryActionsEl) {
-            galleryActionsEl.style.display = 'block';
+            galleryActionsEl.style.display = 'none';
+        }
+
+        if (sharedHeaderEl && sharedTitleEl) {
+            sharedHeaderEl.style.display = 'flex';
+            sharedTitleEl.textContent = data.name || 'Gallery';
         }
 
         const sharedNameEl = galleryElements.sharedGalleryName();

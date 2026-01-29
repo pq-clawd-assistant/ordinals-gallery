@@ -4,22 +4,22 @@
 
 /* CSS Variables for theming */
 :root {
-    --bg-primary: #0d0d0d;
-    --bg-secondary: #1a1a1a;
-    --bg-card: #242424;
-    --bg-card-hover: #2d2d2d;
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --text-muted: #666666;
-    --accent: #f7931a; /* Bitcoin orange */
-    --accent-hover: #ffa726;
-    --border-color: #333333;
-    --error: #ff5252;
-    --success: #4caf50;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    --transition: 0.2s ease;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f0f0f0;
+    --text-primary: #111111;
+    --text-secondary: #555555;
+    --text-muted: #888888;
+    --accent: #111111;
+    --accent-hover: #333333;
+    --border-color: #dddddd;
+    --error: #d32f2f;
+    --success: #2e7d32;
+    --radius: 8px;
+    --radius-sm: 6px;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --transition: 0.15s ease;
 }
 
 /* Reset & Base */
@@ -38,9 +38,9 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 2rem 1rem;
+    padding: 2rem 1.5rem;
 }
 
 /* Header */
@@ -50,13 +50,10 @@ body {
 }
 
 .header h1 {
-    font-size: 2.5rem;
+    font-size: 2.3rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, var(--accent) 0%, #ffd54f 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
 }
 
 .subtitle {
@@ -390,6 +387,43 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.shared-gallery-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    max-width: 1000px;
+    margin: 0 auto 1rem auto;
+}
+
+.shared-gallery-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.home-link {
+    font-size: 0.9rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+}
+
+.home-link:hover {
+    color: var(--accent);
+}
+
+.shared-gallery-card {
+    display: block;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+
+.shared-gallery-card img {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 /* Gallery actions (selection + shared state) */
