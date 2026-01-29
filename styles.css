@@ -422,6 +422,7 @@ body {
     background: var(--bg-card);
     overflow: hidden;
     aspect-ratio: 1 / 1;
+    position: relative;
 }
 
 .shared-gallery-card img,
@@ -431,6 +432,46 @@ body {
     height: 100%;
     object-fit: contain;
     border: none;
+}
+
+/* Frame styles */
+.shared-gallery-card.frame-none {
+    border-width: 1px;
+}
+
+.shared-gallery-card.frame-black {
+    border: 4px solid #111111;
+}
+
+.shared-gallery-card.frame-gold {
+    border: 4px solid #c8a94f;
+}
+
+.frame-selector {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    right: 0.4rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    pointer-events: auto;
+}
+
+.frame-chip {
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.frame-chip.active {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
 }
 
 /* Gallery actions (selection + shared state) */

@@ -470,16 +470,19 @@ function renderGallery() {
 
     // Shared gallery: minimalist image-only grid with ordinals.com links
     if (state.viewingSharedGallery) {
+        const isOwnerView = state.ownsCurrentGallery && !!state.connectedAddress;
+
         filtered.forEach((inscription) => {
             const category = getContentCategory(inscription.mime_type);
             const contentUrl = inscription.render_url || inscription.content_url || CONFIG.CONTENT_URL(inscription.id);
             const ordUrl = CONFIG.ORDINALS_COM(inscription.id);
+            const frame = inscription.frame || 'none';
 
             const wrapper = document.createElement('a');
             wrapper.href = ordUrl;
             wrapper.target = '_blank';
             wrapper.rel = 'noopener noreferrer';
-            wrapper.className = 'shared-gallery-card';
+            wrapper.className = `shared-gallery-card frame-${frame}`;
 
             if (category === 'image') {
                 const img = document.createElement('img');
@@ -489,6 +492,33 @@ function renderGallery() {
                 wrapper.appendChild(img);
             } else {
                 wrapper.innerHTML = `<div class="inscription-preview">${renderPreview(inscription, category)}</div>`;
+            }
+
+            // Owner-only frame selector overlay
+            if (isOwnerView) {
+                const frameSelector = document.createElement('div');
+                frameSelector.className = 'frame-selector';
+                frameSelector.innerHTML = `
+                    <button type="button" data-frame="none" class="frame-chip ${frame === 'none' ? 'active' : ''}">None</button>
+                    <button type="button" data-frame="black" class="frame-chip ${frame === 'black' ? 'active' : ''}">Black</button>
+                    <button type="button" data-frame="gold" class="frame-chip ${frame === 'gold' ? 'active' : ''}">Gold</button>
+                `;
+
+                frameSelector.addEventListener('click', (event) => {
+                    const btn = event.target.closest('button[data-frame]');
+                    if (!btn) return;
+                    event.preventDefault();
+                    const newFrame = btn.dataset.frame;
+
+                    inscription.frame = newFrame;
+                    wrapper.className = `shared-gallery-card frame-${newFrame}`;
+
+                    frameSelector.querySelectorAll('.frame-chip').forEach((chip) => {
+                        chip.classList.toggle('active', chip === btn);
+                    });
+                });
+
+                wrapper.appendChild(frameSelector);
             }
 
             gallery.appendChild(wrapper);
