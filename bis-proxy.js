@@ -460,6 +460,22 @@ app.post('/tasks', (req, res) => {
   }
 });
 
+// JSON API to read all tasks (for local sync)
+app.get('/tasks.json', (req, res) => {
+  try {
+    if (!fs.existsSync(TASKS_PATH)) {
+      return res.json([]);
+    }
+    const raw = fs.readFileSync(TASKS_PATH, 'utf8');
+    const tasks = JSON.parse(raw || '[]');
+    if (!Array.isArray(tasks)) return res.json([]);
+    res.json(tasks);
+  } catch (err) {
+    console.error('Failed to read tasks.json', err);
+    res.status(500).json({ error: 'Failed to read tasks' });
+  }
+});
+
 // ----------------------------------------
 // Startup
 // ----------------------------------------
