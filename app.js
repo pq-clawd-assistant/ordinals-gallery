@@ -841,7 +841,8 @@ async function saveGalleryFrames() {
         showToast('Frames saved.', 'success');
     } catch (err) {
         console.error('Failed to save frames', err);
-        showToast(err.message || 'Failed to save frames', 'error');
+        const message = err?.message || 'Failed to save frames';
+        showToast(`Failed to save frames: ${message}`, 'error');
     }
 }
 
