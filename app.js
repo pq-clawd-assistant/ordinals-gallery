@@ -688,6 +688,7 @@ async function refreshMyGalleries() {
                 <div class="my-gallery-actions">
                     <button class="btn btn-secondary" data-action="open" type="button">Open</button>
                     <button class="btn btn-secondary" data-action="edit" type="button">Edit selection</button>
+                    <button class="btn btn-secondary" data-action="copy" type="button">Copy link</button>
                     <button class="btn btn-danger" data-action="delete" type="button">Delete</button>
                 </div>
             `;
@@ -702,6 +703,19 @@ async function refreshMyGalleries() {
                     if (action === 'open' || action === 'edit') {
                         const asEdit = action === 'edit';
                         loadSharedGallery(id, { fromMyGalleries: true, editMode: asEdit });
+                    } else if (action === 'copy') {
+                        const shareUrl = new URL(window.location.href);
+                        shareUrl.searchParams.set('gallery', id);
+                        shareUrl.searchParams.delete('address');
+                        const link = shareUrl.toString();
+                        (async () => {
+                            try {
+                                await navigator.clipboard.writeText(link);
+                                showToast('Gallery link copied to clipboard.', 'success');
+                            } catch {
+                                showToast('Copy failed. You can copy the link from your browser address bar.', 'error');
+                            }
+                        })();
                     } else if (action === 'delete') {
                         const confirmed = window.confirm('Delete this gallery? This cannot be undone.');
                         if (!confirmed) return;
