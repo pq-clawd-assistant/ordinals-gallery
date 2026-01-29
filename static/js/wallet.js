@@ -281,6 +281,12 @@ async function connectAndSign(walletId, element) {
         
         onVerified(address, walletId);
         hideWalletModal();
+
+        // Hide wallet connect card when connected
+        try {
+            const walletSection = document.getElementById('walletConnectSection');
+            if (walletSection) walletSection.style.display = 'none';
+        } catch {}
         
     } catch (error) {
         console.error('Connection/signing failed:', error);

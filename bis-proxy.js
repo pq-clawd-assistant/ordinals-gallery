@@ -30,9 +30,9 @@ const BIS_BASE = 'https://api.bestinslot.xyz/v3';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// DATABASE_URL can be either a full SQLite URI ("file:..."), or a plain
-// filesystem path. Fallback to a local file next to this script.
-const DB_PATH = process.env.DATABASE_URL || path.join(__dirname, 'galleries.sqlite');
+// GALLERIES_DB_PATH can point at a Railway volume (e.g. /data/galleries.sqlite)
+// or fall back to a local file next to this script.
+const DB_PATH = process.env.GALLERIES_DB_PATH || path.join(__dirname, 'galleries.sqlite');
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
