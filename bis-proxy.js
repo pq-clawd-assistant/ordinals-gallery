@@ -16,6 +16,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const app = express();
@@ -33,6 +34,9 @@ const __dirname = path.dirname(__filename);
 // GALLERIES_DB_PATH can point at a Railway volume (e.g. /data/galleries.sqlite)
 // or fall back to a local file next to this script.
 const DB_PATH = process.env.GALLERIES_DB_PATH || path.join(__dirname, 'galleries.sqlite');
+
+// Task inbox path (for simple shared tasks UI)
+const TASKS_PATH = process.env.TASKS_PATH || path.join(__dirname, 'tasks.json');
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
@@ -357,6 +361,103 @@ app.delete('/galleries/:id', (req, res) => {
       return res.status(204).send();
     });
   });
+});
+
+// ----------------------------------------
+// Simple Tasks Inbox (for Craig)
+// ----------------------------------------
+
+// Serve a tiny HTML form for adding tasks
+app.get('/tasks', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Craig's Task Inbox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem 1.5rem; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.4rem; }
+    p { font-size: 0.9rem; color: #444; margin: 0.25rem 0 0.75rem; }
+    textarea { width: 100%; min-height: 4rem; margin: 0.5rem 0; padding: 0.5rem; font-family: inherit; font-size: 0.95rem; }
+    button { padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .status { margin-top: 0.5rem; font-size: 0.85rem; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>Add a task for Craig</h1>
+  <p>Type something Craig should remember or do. It goes into his shared task inbox.</p>
+  <textarea id="taskText" placeholder="e.g. Book dentist for Craig next week"></textarea>
+  <br />
+  <button id="submitBtn">Add task</button>
+  <div id="status" class="status"></div>
+  <script>
+    const btn = document.getElementById('submitBtn');
+    const textEl = document.getElementById('taskText');
+    const statusEl = document.getElementById('status');
+    btn.addEventListener('click', async () => {
+      const text = textEl.value.trim();
+      if (!text) {
+        statusEl.textContent = 'Please enter a task.';
+        return;
+      }
+      btn.disabled = true;
+      statusEl.textContent = 'Saving...';
+      try {
+        const resp = await fetch('/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data?.ok) {
+          throw new Error(data?.error || 'Failed to save task');
+        }
+        statusEl.textContent = 'Task added.';
+        textEl.value = '';
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + (err.message || 'Failed to save task');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>`);
+});
+
+// JSON API to append a task to tasks.json
+app.post('/tasks', (req, res) => {
+  const { text } = req.body || {};
+
+  if (!text || typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ ok: false, error: 'Missing or empty text' });
+  }
+
+  let tasks = [];
+  try {
+    if (fs.existsSync(TASKS_PATH)) {
+      const raw = fs.readFileSync(TASKS_PATH, 'utf8');
+      const parsed = JSON.parse(raw || '[]');
+      if (Array.isArray(parsed)) tasks = parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to read existing tasks.json, starting fresh', e);
+    tasks = [];
+  }
+
+  const now = new Date().toISOString();
+  const task = { id: now, text: text.trim(), createdAt: now };
+  tasks.push(task);
+
+  try {
+    fs.writeFileSync(TASKS_PATH, JSON.stringify(tasks, null, 2));
+    return res.status(201).json({ ok: true, task });
+  } catch (err) {
+    console.error('Failed to write tasks.json', err);
+    return res.status(500).json({ ok: false, error: 'Failed to save task' });
+  }
 });
 
 // ----------------------------------------
