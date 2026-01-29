@@ -810,6 +810,41 @@ async function refreshMyGalleries() {
     }
 }
 
+async function saveGalleryFrames() {
+    if (!state.currentGalleryId || !state.ownsCurrentGallery || !state.connectedAddress) {
+        showToast('You can only save frames for your own gallery.', 'error');
+        return;
+    }
+
+    try {
+        const payload = {
+            address: state.connectedAddress,
+            name: state.sharedGalleryMeta?.name || 'Gallery',
+            inscriptions: state.inscriptions,
+        };
+
+        const resp = await fetch(`${CONFIG.PROXY_BASE}/galleries/${encodeURIComponent(state.currentGalleryId)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+            const errPayload = await resp.json().catch(() => null);
+            const message = errPayload?.error || `Failed to save frames (status ${resp.status})`;
+            throw new Error(message);
+        }
+
+        showToast('Frames saved.', 'success');
+    } catch (err) {
+        console.error('Failed to save frames', err);
+        showToast(err.message || 'Failed to save frames', 'error');
+    }
+}
+
 async function deleteGallery(id, address) {
     try {
         const resp = await fetch(`${CONFIG.PROXY_BASE}/galleries/${encodeURIComponent(id)}?address=${encodeURIComponent(address)}`, {
@@ -889,6 +924,7 @@ async function loadSharedGallery(galleryId, options = {}) {
         // In shared gallery view, hide stats/filters and show minimal header
         const sharedHeaderEl = document.getElementById('sharedGalleryHeader');
         const sharedTitleEl = document.getElementById('sharedGalleryTitle');
+        const saveFramesBtn = document.getElementById('saveFramesBtn');
 
         galleryElements.statsSection().style.display = 'none';
         galleryElements.filterSection().style.display = 'none';
@@ -901,6 +937,10 @@ async function loadSharedGallery(galleryId, options = {}) {
         if (sharedHeaderEl && sharedTitleEl) {
             sharedHeaderEl.style.display = 'flex';
             sharedTitleEl.textContent = data.name || 'Gallery';
+        }
+
+        if (saveFramesBtn) {
+            saveFramesBtn.style.display = state.ownsCurrentGallery ? 'inline-flex' : 'none';
         }
 
         const sharedNameEl = galleryElements.sharedGalleryName();
@@ -1152,11 +1192,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // (Optional) legacy manual address input support if present in DOM
-    const addressInputEl = galleryElements.addressInput ? galleryElements.addressInput() : null;
-    if (addressInputEl) {
-        addressInputEl.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') loadInscriptions();
+    const saveFramesBtn = document.getElementById('saveFramesBtn');
+    if (saveFramesBtn) {
+        saveFramesBtn.addEventListener('click', () => {
+            saveGalleryFrames();
         });
     }
 

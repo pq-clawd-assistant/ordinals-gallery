@@ -266,6 +266,65 @@ app.get('/galleries/:id', (req, res) => {
   });
 });
 
+// Update a gallery (e.g. frames or name) – requires matching address
+app.put('/galleries/:id', (req, res) => {
+  const { id } = req.params;
+  const { address, name, inscriptions } = req.body || {};
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid address' });
+  }
+
+  if (!Array.isArray(inscriptions) || inscriptions.length === 0) {
+    return res.status(400).json({ error: 'Inscriptions array is required' });
+  }
+
+  const inscriptionIds = inscriptions
+    .map((i) => (i && typeof i.id === 'string' ? i.id : null))
+    .filter(Boolean);
+
+  if (inscriptionIds.length === 0) {
+    return res.status(400).json({ error: 'No valid inscription ids provided' });
+  }
+
+  const inscriptionsJson = JSON.stringify(inscriptions);
+
+  db.get('SELECT address FROM galleries WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Failed to look up gallery for update', err);
+      return res.status(500).json({ error: 'Failed to update gallery' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    if (row.address !== address) {
+      return res.status(403).json({ error: 'Address does not own this gallery' });
+    }
+
+    const newName = typeof name === 'string' && name.trim() ? name.trim() : row.name;
+
+    db.run(
+      'UPDATE galleries SET name = ?, inscription_ids = ?, inscriptions_json = ? WHERE id = ?',
+      [newName, inscriptionIds.join(','), inscriptionsJson, id],
+      (updateErr) => {
+        if (updateErr) {
+          console.error('Failed to update gallery', updateErr);
+          return res.status(500).json({ error: 'Failed to update gallery' });
+        }
+
+        return res.json({
+          id: String(id),
+          address,
+          name: newName,
+          inscriptionCount: inscriptionIds.length,
+        });
+      }
+    );
+  });
+});
+
 // Delete a gallery (requires matching address for lightweight auth)
 app.delete('/galleries/:id', (req, res) => {
   const { id } = req.params;
