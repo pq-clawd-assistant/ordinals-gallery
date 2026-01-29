@@ -213,6 +213,35 @@ function showError(message) {
     errorEl.style.display = 'block';
 }
 
+function showToast(message, type = 'success', timeoutMs = 3500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    toast.innerHTML = `
+        <div class="toast-message">${escapeHtml(message)}</div>
+        <button class="toast-close" type="button" aria-label="Dismiss">&times;</button>
+    `;
+
+    const close = () => {
+        if (!toast.parentNode) return;
+        toast.parentNode.removeChild(toast);
+    };
+
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', close);
+    }
+
+    container.appendChild(toast);
+
+    if (timeoutMs > 0) {
+        setTimeout(close, timeoutMs);
+    }
+}
+
 /**
  * Hide error message
  */
@@ -567,12 +596,19 @@ async function saveCurrentSelectionAsGallery() {
         shareUrl.searchParams.delete('address');
 
         hideError();
-        window.alert(`Gallery saved! Share this link:\n\n${shareUrl.toString()}`);
+
+        try {
+            await navigator.clipboard.writeText(shareUrl.toString());
+            showToast('Gallery saved. Share link copied to your clipboard.', 'success');
+        } catch {
+            showToast('Gallery saved. Copy the share link from your browser address bar.', 'success');
+        }
 
         // Refresh "My galleries" list for the connected wallet
         refreshMyGalleries();
     } catch (err) {
         console.error('Error saving gallery:', err);
+        showToast(err.message || 'Failed to save gallery', 'error');
         showError(err.message || 'Failed to save gallery');
     }
 }
@@ -711,6 +747,7 @@ async function deleteGallery(id, address) {
         await refreshMyGalleries();
     } catch (err) {
         console.error('Failed to delete gallery', err);
+        showToast(err.message || 'Failed to delete gallery', 'error');
         showError(err.message || 'Failed to delete gallery');
     }
 }
