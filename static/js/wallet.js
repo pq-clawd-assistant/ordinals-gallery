@@ -282,10 +282,15 @@ async function connectAndSign(walletId, element) {
         onVerified(address, walletId);
         hideWalletModal();
 
+        // Mark page as wallet-connected for CSS hooks
+        try {
+            document.body.classList.add('wallet-connected');
+        } catch {}
+
         // Hide wallet connect card when connected
         try {
             const walletSection = document.getElementById('walletConnectSection');
-            if (walletSection) walletSection.remove();
+            if (walletSection) walletSection.style.display = 'none';
         } catch {}
         
     } catch (error) {
@@ -394,6 +399,10 @@ function onDisconnected() {
     walletState.address = null;
     walletState.provider = null;
     walletState.signature = null;
+
+    try {
+        document.body.classList.remove('wallet-connected');
+    } catch {}
     
     // Clear session
     localStorage.removeItem('wallet_address');

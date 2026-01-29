@@ -888,6 +888,10 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.wallet-connected .wallet-connect-card {
+    display: none;
+}
+
 .wallet-connect-title {
     font-size: 1.25rem;
     font-weight: 600;
