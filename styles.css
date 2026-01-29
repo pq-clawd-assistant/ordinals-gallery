@@ -281,6 +281,12 @@ body {
     font-size: 0.85rem;
 }
 
+.my-gallery-item.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(247, 147, 26, 0.4);
+    background: radial-gradient(circle at top left, rgba(247, 147, 26, 0.08), transparent 55%);
+}
+
 .my-gallery-main {
     display: flex;
     flex-direction: column;

@@ -637,6 +637,11 @@ async function refreshMyGalleries() {
             item.className = 'my-gallery-item';
             item.dataset.id = g.id;
 
+            // Highlight currently open gallery
+            if (state.currentGalleryId && String(state.currentGalleryId) === String(g.id)) {
+                item.classList.add('active');
+            }
+
             const created = g.createdAt ? new Date(g.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
             item.innerHTML = `
