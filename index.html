@@ -15,8 +15,8 @@
             <p class="subtitle">View inscriptions held by any Bitcoin wallet</p>
         </header>
 
-        <!-- Wallet Connect Section (LaserEyes) -->
-        <section class="wallet-connect-section">
+        <!-- Wallet Connect Section -->
+        <section class="wallet-connect-section" id="walletConnectSection">
             <!-- Connected state: top right bar -->
             <div id="connected-bar" class="wallet-connected-bar" style="display: none;">
                 <code id="wallet-address">-</code>
@@ -28,8 +28,8 @@
                 <div id="not-connected">
                     <h2 class="wallet-connect-title">Connect your Bitcoin wallet</h2>
                     <p class="wallet-connect-description">
-                        Use LaserEyes to connect and verify your wallet. Once connected, we'll load all
-                        inscriptions held by your verified address via our Best in Slot proxy.
+                        Connect and verify your wallet. Once connected, we'll load all
+                        inscriptions held by your verified address via our ordinals indexer.
                     </p>
                     <button id="connect-btn" class="btn btn-primary">
                         Connect Wallet
@@ -147,8 +147,7 @@
         <div id="toast-container" class="toast-container"></div>
 
         <!-- Footer -->
-        <footer class="footer">
-            <p>Powered by <a href="https://bestinslot.xyz" target="_blank">Best in Slot</a></p>
+        <footer class="footer" id="footer">
             <p>View inscriptions on <a href="https://ordinals.com" target="_blank">ordinals.com</a></p>
         </footer>
     </div>

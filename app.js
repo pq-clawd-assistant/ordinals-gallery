@@ -1156,7 +1156,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // URL param support
     const urlParams = new URLSearchParams(window.location.search);
     const galleryParam = urlParams.get('gallery');
-    if (galleryParam) {
+    const isShared = !!galleryParam;
+
+    if (isShared) {
+        // Hide wallet connect UI, main header, and footer for shared gallery view
+        const headerEl = document.querySelector('header.header');
+        const walletSection = document.getElementById('walletConnectSection');
+        const footerEl = document.getElementById('footer');
+        if (headerEl) headerEl.style.display = 'none';
+        if (walletSection) walletSection.style.display = 'none';
+        if (footerEl) footerEl.style.display = 'none';
+
         loadSharedGallery(galleryParam);
     }
 });
