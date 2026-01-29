@@ -391,19 +391,22 @@ body {
 
 .shared-gallery-header {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     max-width: 1000px;
-    margin: 0 auto 1rem auto;
+    margin: 0 auto 1.5rem auto;
+    text-align: center;
+    gap: 0.35rem;
 }
 
 .shared-gallery-title {
-    font-size: 1.4rem;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 .home-link {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     text-decoration: none;
     color: var(--text-secondary);
 }
@@ -418,12 +421,16 @@ body {
     border: 1px solid var(--border-color);
     background: var(--bg-card);
     overflow: hidden;
+    aspect-ratio: 1 / 1;
 }
 
-.shared-gallery-card img {
+.shared-gallery-card img,
+.shared-gallery-card iframe {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
+    object-fit: cover;
+    border: none;
 }
 
 /* Gallery actions (selection + shared state) */
@@ -563,7 +570,31 @@ body {
 
 .inscription-card.selected {
     border-color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(247, 147, 26, 0.4);
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.5);
+    background: #f7f7f7;
+}
+
+.selection-toggle {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 999px;
+    border: none;
+    color: #ffffff;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.45rem;
+    cursor: pointer;
+}
+
+.selection-toggle:hover {
+    background: rgba(0, 0, 0, 1);
+}
+
+.selection-checkbox {
+    display: inline-block;
+    width: 0.9rem;
+    text-align: center;
 }
 
 .inscription-info {
