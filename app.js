@@ -438,7 +438,16 @@ async function loadTextPreview(card, inscriptionId) {
 
     try {
         const content = await fetchInscriptionContent(inscriptionId);
-        // Truncate for preview
+
+        // If the content looks like HTML/JS markup, render the ordinals.com page in an iframe instead
+        if (typeof content === 'string' && /<\s*(html|div|script)/i.test(content)) {
+            const previewContainer = card.querySelector('.inscription-preview') || card;
+            const ordUrl = CONFIG.ORDINALS_COM(inscriptionId);
+            previewContainer.innerHTML = `<iframe src="${ordUrl}" loading="lazy"></iframe>`;
+            return;
+        }
+
+        // Otherwise show a truncated text preview
         const truncated = content.length > 200 ? content.slice(0, 200) + '...' : content;
         previewEl.textContent = truncated;
     } catch (error) {
