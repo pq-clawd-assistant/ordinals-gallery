@@ -502,6 +502,7 @@ function renderGallery() {
                     <button type="button" data-frame="none" class="frame-chip ${frame === 'none' ? 'active' : ''}">None</button>
                     <button type="button" data-frame="black" class="frame-chip ${frame === 'black' ? 'active' : ''}">Black</button>
                     <button type="button" data-frame="gold" class="frame-chip ${frame === 'gold' ? 'active' : ''}">Gold</button>
+                    <button type="button" data-frame="distressed" class="frame-chip ${frame === 'distressed' ? 'active' : ''}">Distressed</button>
                 `;
 
                 frameSelector.addEventListener('click', (event) => {

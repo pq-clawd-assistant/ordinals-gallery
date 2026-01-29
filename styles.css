@@ -447,6 +447,29 @@ body {
     border: 4px solid #c8a94f;
 }
 
+.shared-gallery-card.frame-distressed {
+    border: none;
+    padding: 18px;
+    background: transparent;
+}
+
+.shared-gallery-card.frame-distressed::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("https://cdn.discordapp.com/attachments/968427550906933289/1466514564131721380/dsdsdsds.png?ex=697d059e&is=697bb41e&hm=e0eb8186ee37a5e166f6f4eec7d1b0542e09b01339ce6e75face4210fd443d25&");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.shared-gallery-card.frame-distressed img,
+.shared-gallery-card.frame-distressed iframe {
+    position: relative;
+    z-index: 0;
+}
+
 .frame-selector {
     position: absolute;
     bottom: 0.4rem;
