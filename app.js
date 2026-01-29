@@ -376,12 +376,17 @@ function createInscriptionCard(inscription) {
         </div>
     `;
 
-    // Card click opens modal (but not when clicking the selection toggle)
+    // Card click selects/deselects when selection is enabled; otherwise opens modal
     card.addEventListener('click', (event) => {
         if (event.target.closest && event.target.closest('.selection-toggle')) {
             return;
         }
-        openModal(inscription);
+
+        if (showSelectionToggle) {
+            toggleInscriptionSelection(inscription.id);
+        } else {
+            openModal(inscription);
+        }
     });
 
     if (showSelectionToggle) {

@@ -285,7 +285,7 @@ async function connectAndSign(walletId, element) {
         // Hide wallet connect card when connected
         try {
             const walletSection = document.getElementById('walletConnectSection');
-            if (walletSection) walletSection.style.display = 'none';
+            if (walletSection) walletSection.remove();
         } catch {}
         
     } catch (error) {
